@@ -17,6 +17,13 @@ import {
   type SummaryReport,
 } from "@/lib/reports";
 import { getLeaveCategoryLabel } from "@/lib/booking";
+import {
+  generateSummaryPDF,
+  generateTimePeriodPDF,
+  generateCategoryPDF,
+  generateUserPDF,
+  generateDayStatsPDF,
+} from "@/lib/pdfExport";
 
 type ReportType = "summary" | "time" | "category" | "user" | "day";
 
@@ -468,12 +475,73 @@ export default function ReportsPage() {
 
         {/* Header */}
         <div className="mb-4">
-          <h1 className="text-lg font-bold text-gray-800 mb-2">
-            รายงานข้อมูลการลา
-          </h1>
-          <p className="text-xs text-gray-600">
-            ดูสถิติและรายงานสรุปข้อมูลการลา
-          </p>
+          <div className="flex items-center justify-between mb-2">
+            <div>
+              <h1 className="text-lg font-bold text-gray-800 mb-2">
+                รายงานข้อมูลการลา
+              </h1>
+              <p className="text-xs text-gray-600">
+                ดูสถิติและรายงานสรุปข้อมูลการลา
+              </p>
+            </div>
+            {/* ปุ่มดาวน์โหลด PDF */}
+            <button
+              onClick={async () => {
+                try {
+                  switch (activeReport) {
+                    case "summary":
+                      if (summary) await generateSummaryPDF(summary);
+                      break;
+                    case "time":
+                      if (timeReports.length > 0)
+                        await generateTimePeriodPDF(timeReports, periodType);
+                      break;
+                    case "category":
+                      if (categoryReports.length > 0)
+                        await generateCategoryPDF(categoryReports);
+                      break;
+                    case "user":
+                      if (userReports.length > 0)
+                        await generateUserPDF(userReports);
+                      break;
+                    case "day":
+                      if (dayStats.length > 0)
+                        await generateDayStatsPDF(dayStats);
+                      break;
+                  }
+                } catch (error) {
+                  console.error("Failed to generate PDF:", error);
+                  alert("เกิดข้อผิดพลาดในการสร้าง PDF");
+                }
+              }}
+              disabled={
+                loadingReports ||
+                (activeReport === "summary" && !summary) ||
+                (activeReport === "time" && timeReports.length === 0) ||
+                (activeReport === "category" && categoryReports.length === 0) ||
+                (activeReport === "user" && userReports.length === 0) ||
+                (activeReport === "day" && dayStats.length === 0)
+              }
+              className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg text-xs font-medium transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed shadow-md flex items-center gap-2"
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="16"
+                height="16"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                <polyline points="7 10 12 15 17 10" />
+                <line x1="12" y1="15" x2="12" y2="3" />
+              </svg>
+              ดาวน์โหลด PDF
+            </button>
+          </div>
         </div>
 
         {/* Report Type Tabs - Fitts's Law: ปุ่มใหญ่พอ */}

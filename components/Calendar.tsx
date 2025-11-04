@@ -206,12 +206,29 @@ export default function Calendar({
             {day}
           </span>
           {hasBookings && !isDisabled && (
-            <div className="absolute bottom-1">
-              <span
-                className={`w-1 h-1 rounded-full block ${
-                  dateSelected ? "bg-white" : "bg-orange-500"
-                }`}
-              />
+            <div className="absolute bottom-1 flex items-center justify-center gap-0.5">
+              {/* แสดงจุดตามจำนวนคนที่จอง (สูงสุด 2 คน) */}
+              {dayBookings.length === 1 && (
+                <span
+                  className={`w-1.5 h-1.5 rounded-full ${
+                    dateSelected ? "bg-white" : "bg-orange-400"
+                  }`}
+                />
+              )}
+              {dayBookings.length >= 2 && (
+                <>
+                  <span
+                    className={`w-1.5 h-1.5 rounded-full ${
+                      dateSelected ? "bg-white" : "bg-orange-500"
+                    }`}
+                  />
+                  <span
+                    className={`w-1.5 h-1.5 rounded-full ${
+                      dateSelected ? "bg-white" : "bg-red-500"
+                    }`}
+                  />
+                </>
+              )}
             </div>
           )}
         </div>
@@ -275,15 +292,24 @@ export default function Calendar({
       {/* Calendar Grid - Fitts's Law: ปุ่มใหญ่พอสำหรับมือถือ */}
       <div className="grid grid-cols-7 gap-0.5">{renderCalendarDays()}</div>
 
-      {/* Legend - Aesthetic-Usability Effect */}
-      <div className="flex gap-3 justify-center mt-3 pt-2.5 border-t border-gray-200">
+      {/* Legend - Aesthetic-Usability Effect & Gestalt Principle */}
+      <div className="flex gap-3 justify-center mt-3 pt-2.5 border-t border-gray-200 flex-wrap">
         <div className="flex items-center gap-1.5 text-xs text-gray-600">
           <span className="w-2 h-2 rounded-full bg-blue-400" />
           <span>วันนี้</span>
         </div>
         <div className="flex items-center gap-1.5 text-xs text-gray-600">
-          <span className="w-2 h-2 rounded-full bg-orange-500" />
-          <span>มีการจอง</span>
+          <div className="flex items-center gap-0.5">
+            <span className="w-1.5 h-1.5 rounded-full bg-orange-400" />
+          </div>
+          <span>จอง 1 คน</span>
+        </div>
+        <div className="flex items-center gap-1.5 text-xs text-gray-600">
+          <div className="flex items-center gap-0.5">
+            <span className="w-1.5 h-1.5 rounded-full bg-orange-500" />
+            <span className="w-1.5 h-1.5 rounded-full bg-red-500" />
+          </div>
+          <span>จอง 2 คน</span>
         </div>
       </div>
     </div>
