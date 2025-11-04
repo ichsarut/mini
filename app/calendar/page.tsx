@@ -263,7 +263,7 @@ export default function CalendarPage() {
                 {showDateError}
               </div>
             )}
-            <p className="text-sm text-gray-600 text-center">
+            <div className="text-sm text-gray-600 text-center">
               {endDate && endDate.getTime() !== selectedDate.getTime() ? (
                 <>
                   วันที่เริ่มต้น:{" "}
@@ -313,7 +313,7 @@ export default function CalendarPage() {
                   </button>
                 </>
               )}
-            </p>
+            </div>
           </div>
         )}
 
