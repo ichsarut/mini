@@ -1,0 +1,8 @@
+# Files to ignore when deploying to Vercel
+node_modules
+.next
+.env*.local
+.vscode
+.idea
+*.log
+.DS_Store
