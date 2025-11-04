@@ -247,10 +247,10 @@ export default function Calendar({
           disabled={
             viewDate <= new Date(today.getFullYear(), today.getMonth(), 1)
           }
-          className="w-8 h-8 rounded-full bg-gray-100 hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center text-lg transition-colors active:scale-95"
+          className="w-8 h-8 rounded-full bg-gray-100 hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center text-lg font-bold text-gray-700 hover:text-gray-900 transition-colors active:scale-95"
           aria-label="เดือนก่อนหน้า"
         >
-          ‹
+          ←
         </button>
         <div>
           <h2 className="text-base font-semibold text-gray-800">
@@ -262,10 +262,10 @@ export default function Calendar({
           disabled={
             viewDate >= new Date(maxDate.getFullYear(), maxDate.getMonth(), 1)
           }
-          className="w-8 h-8 rounded-full bg-gray-100 hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center text-lg transition-colors active:scale-95"
+          className="w-8 h-8 rounded-full bg-gray-100 hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center text-lg font-bold text-gray-700 hover:text-gray-900 transition-colors active:scale-95"
           aria-label="เดือนถัดไป"
         >
-          ›
+          →
         </button>
       </div>
 
