@@ -139,7 +139,7 @@ export default function Calendar({
               isDisabled
                 ? "bg-gray-100 border border-gray-200 cursor-not-allowed opacity-40"
                 : dateSelected
-                ? "bg-line-green text-white border-2 border-line-green cursor-pointer"
+                ? "bg-indigo-600 text-white border-2 border-indigo-700 shadow-lg cursor-pointer font-semibold ring-2 ring-indigo-200"
                 : isTodayDate
                 ? "bg-blue-100 border-2 border-blue-400 cursor-pointer"
                 : hasBookings
@@ -151,7 +151,7 @@ export default function Calendar({
           <span
             className={`text-xs ${
               dateSelected
-                ? "font-bold text-white"
+                ? "font-bold text-white drop-shadow-sm"
                 : isTodayDate && !isDisabled
                 ? "font-semibold text-blue-700"
                 : isDisabled
