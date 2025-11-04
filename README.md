@@ -20,6 +20,103 @@
 - ✅ แสดงข้อมูลโปรไฟล์ผู้ใช้
 - ✅ ส่งข้อความผ่าน LINE (ในแอป LINE เท่านั้น)
 - ✅ ตรวจสอบสถานะการเข้าสู่ระบบและการเปิดในแอป LINE
+- ✅ รองรับ Built-in Features ของ LINE MINI App
+
+## Built-in Features ของ LINE MINI App
+
+โปรเจกต์นี้รองรับและใช้งาน Built-in Features ของ LINE MINI App โดยอัตโนมัติ:
+
+### 1. Action Button (ปุ่มเมนู)
+
+- **ทำงานอัตโนมัติ**: ปุ่มเมนู (⋮) จะปรากฏใน header ของ LINE MINI App โดยอัตโนมัติ
+- **ไม่ต้องเขียนโค้ด**: ไม่ต้องเพิ่มโค้ดใดๆ ปุ่มจะทำงานเอง
+- **การใช้งาน**: ผู้ใช้สามารถแตะปุ่มเพื่อเข้าถึงเมนู Options และ Recently used services
+
+### 2. Multi-tab View (มุมมองหลายแท็บ)
+
+- **LINE 15.12.0+**: แสดง Multi-tab view พร้อม Options และ Recently used services
+- **LINE ต่ำกว่า 15.12.0**: แสดงเมนู Options แทน
+
+#### Options (ตัวเลือกในเมนู)
+
+- **Refresh**: รีเฟรชหน้าเว็บปัจจุบัน
+- **Share**: แชร์ URL ของหน้าเว็บปัจจุบันหรือ LIFF URL ของ LINE MINI App
+  - ใช้ metadata จาก `layout.tsx` สำหรับ title และ description
+  - รูปภาพใช้ Channel icon จาก LINE Developers Console
+- **Add to Home**: เพิ่ม shortcut ไปยังหน้าจอหลัก (สำหรับ verified MINI Apps, LINE 14.3.0+)
+- **Favorites**: เพิ่ม LINE MINI App ไปยัง Favorites (สำหรับ verified MINI Apps, ญี่ปุ่น, LINE 15.18.0+)
+- **Minimize browser**: ย่อ LIFF browser (สำหรับ verified MINI Apps)
+- **Permission settings**: จัดการสิทธิ์กล้องและไมโครโฟน (LINE 14.6.0+)
+- **About the service**: แสดง Provider page (สำหรับ verified MINI Apps)
+
+#### Recently used services (บริการที่ใช้ล่าสุด)
+
+- แสดง LINE MINI Apps และ LIFF apps ที่ใช้ล่าสุด (สูงสุด 50 รายการ)
+- ผู้ใช้สามารถเปิดใช้งาน LINE MINI App ที่เคยใช้ได้จากที่นี่
+
+### 3. Channel Consent Screen (หน้าจอขอความยินยอม)
+
+- **ทำงานอัตโนมัติ**: ปรากฏเมื่อผู้ใช้เปิด LINE MINI App เป็นครั้งแรก
+- **ไม่ต้องเขียนโค้ด**: หน้าจอจะแสดงโดยอัตโนมัติ
+- **สิทธิ์ที่ขอ**:
+  - สิทธิ์ในการเข้าถึงข้อมูลโปรไฟล์ LINE ของผู้ใช้
+  - สิทธิ์ในการส่งข้อความไปยังแชท
+
+### การใช้งาน Built-in Features ในโค้ด
+
+#### ตรวจสอบความพร้อมของ Features
+
+```tsx
+import { useMiniAppFeatures } from "@/hooks/useMiniAppFeatures";
+
+function MyComponent() {
+  const { features, loading, isFeatureAvailable } = useMiniAppFeatures();
+
+  if (loading) return <div>Loading...</div>;
+
+  // ตรวจสอบว่าเปิดใน LINE MINI App หรือไม่
+  if (features?.isInMiniApp) {
+    // Features ต่างๆ พร้อมใช้งาน
+  }
+
+  // ตรวจสอบ feature เฉพาะ
+  if (isFeatureAvailable("supportsMultiTabView")) {
+    // Multi-tab view พร้อมใช้งาน
+  }
+}
+```
+
+#### ใช้ Utility Functions
+
+```tsx
+import {
+  isInMiniApp,
+  getMiniAppFeaturesInfo,
+  shareCurrentPage,
+  addToHomeScreen,
+} from "@/lib/miniAppFeatures";
+
+// ตรวจสอบว่าเปิดใน LINE MINI App
+const inMiniApp = isInMiniApp();
+
+// ดูข้อมูล features ทั้งหมด
+const featuresInfo = getMiniAppFeaturesInfo();
+```
+
+### หมายเหตุสำคัญ
+
+1. **Built-in Features ทำงานอัตโนมัติ**: ไม่ต้องเขียนโค้ดเพิ่มเติมสำหรับ Action button, Multi-tab view, และ Channel consent screen
+2. **Verified MINI App**: ฟีเจอร์บางอย่าง (Add to Home, Favorites, Minimize browser, About the service) ต้องเป็น verified MINI App
+3. **Share Feature**:
+   - ใช้ metadata จาก `app/layout.tsx` สำหรับ title และ description
+   - ตั้งค่า Channel icon ใน LINE Developers Console เพื่อใช้เป็นรูปภาพในการแชร์
+   - ตั้งค่า LIFF app name ใน LINE Developers Console → Web app settings
+4. **URL Structure**: สำหรับ Add to Home feature หน้าเว็บต้องเริ่มต้นด้วย endpoint URL ของ LINE MINI App
+
+### เอกสารเพิ่มเติม
+
+- [LINE MINI App Built-in Features](https://developers.line.biz/en/docs/line-mini-app/discover/builtin-features/)
+- [LINE MINI App Introduction](https://developers.line.biz/en/docs/line-mini-app/discover/introduction/)
 
 ## การติดตั้ง
 
