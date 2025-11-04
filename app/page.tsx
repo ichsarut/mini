@@ -46,23 +46,6 @@ export default function Home() {
     setProfile(null);
   };
 
-  const handleSendMessage = async () => {
-    if (!message.trim()) return;
-
-    if (liff && isInClient) {
-      await sendMessages([
-        {
-          type: "text",
-          text: message,
-        },
-      ]);
-      setMessage("");
-      alert("Message sent!");
-    } else {
-      alert("This feature only works in LINE app");
-    }
-  };
-
   if (loading) {
     return (
       <div className="min-h-screen p-2 flex justify-center items-start bg-gray-50">
@@ -92,14 +75,6 @@ export default function Home() {
   return (
     <div className="min-h-screen p-2 flex justify-center items-start bg-gray-50">
       <div className="bg-white rounded-lg p-3 shadow-sm max-w-full w-full">
-        {/* Header - Aesthetic-Usability Effect */}
-        <h1 className="text-line-green text-lg font-bold mb-2 text-center">
-          LINE LIFF App
-        </h1>
-        <p className="text-sm text-gray-600 text-center mb-3">
-          ยินดีต้อนรับสู่แอปพลิเคชัน LINE LIFF
-        </p>
-
         <Navigation />
 
         {/* Status Info - Miller's Rule: จัดกลุ่มข้อมูล */}
@@ -125,8 +100,13 @@ export default function Home() {
         {!isLoggedIn ? (
           /* Fitts's Law: ปุ่มใหญ่ กดง่าย */
           <button
-            className="w-full bg-line-green hover:bg-line-green-dark text-white py-2.5 px-4 rounded-lg font-medium text-sm transition-colors shadow-sm active:scale-95"
+            className="w-full bg-green-700 hover:bg-green-800 font-semibold py-2.5 px-4 rounded-lg text-sm transition-colors shadow-lg ring-2 ring-green-800 active:scale-95"
             onClick={handleLogin}
+            style={{
+              color: "#ffffff",
+              textShadow: "0 1px 3px rgba(0,0,0,0.5), 0 0 1px rgba(0,0,0,0.8)",
+              WebkitTextStroke: "0.3px rgba(0,0,0,0.2)",
+            }}
           >
             เข้าสู่ระบบด้วย LINE
           </button>
@@ -159,37 +139,6 @@ export default function Home() {
                 </div>
               </div>
             )}
-
-            {/* Send Message - Hick's Law: ลดความซับซ้อน */}
-            <div className="mb-4 pt-3 border-t border-gray-200">
-              <h3 className="text-sm font-semibold mb-2 text-gray-800">
-                ส่งข้อความ
-              </h3>
-              <div className="flex gap-2">
-                <input
-                  type="text"
-                  value={message}
-                  onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-                    setMessage(e.target.value)
-                  }
-                  placeholder="พิมพ์ข้อความ..."
-                  className="flex-1 px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-line-green focus:border-transparent"
-                  disabled={!isInClient}
-                />
-                <button
-                  className="bg-line-green hover:bg-line-green-dark text-white px-4 py-2 rounded-md text-sm font-medium transition-colors disabled:bg-gray-300 disabled:cursor-not-allowed active:scale-95"
-                  onClick={handleSendMessage}
-                  disabled={!isInClient || !message.trim()}
-                >
-                  ส่ง
-                </button>
-              </div>
-              {!isInClient && (
-                <p className="text-xs text-orange-600 mt-2">
-                  ⚠️ การส่งข้อความทำงานได้เฉพาะในแอป LINE เท่านั้น
-                </p>
-              )}
-            </div>
 
             {/* Actions - Fitts's Law */}
             <div className="flex gap-2 pt-3 border-t border-gray-200">

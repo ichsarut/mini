@@ -117,7 +117,8 @@ export default function BookingFooter({
             onChange={(e) => onReasonChange(e.target.value)}
             placeholder="ระบุเหตุผลการลา..."
             rows={3}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm resize-none focus:outline-none focus:ring-2 focus:ring-line-green focus:border-transparent"
+            className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm resize-none focus:outline-none focus:ring-2 focus:ring-line-green focus:border-transparent bg-white text-gray-900 placeholder:text-gray-400"
+            style={{ color: "#111827" }}
           />
         </div>
 
@@ -132,7 +133,17 @@ export default function BookingFooter({
           <button
             onClick={onConfirm}
             disabled={daysCount > maxDays}
-            className="flex-1 bg-line-green hover:bg-line-green-dark text-white py-2.5 px-4 rounded-lg font-medium text-sm transition-colors disabled:bg-gray-300 disabled:cursor-not-allowed shadow-sm"
+            className="flex-1 bg-green-700 hover:bg-green-800 font-semibold py-2.5 px-4 rounded-lg text-sm transition-colors disabled:bg-gray-300 disabled:cursor-not-allowed shadow-lg ring-2 ring-green-800 disabled:ring-0"
+            style={
+              !(daysCount > maxDays)
+                ? {
+                    color: "#ffffff",
+                    textShadow:
+                      "0 1px 3px rgba(0,0,0,0.5), 0 0 1px rgba(0,0,0,0.8)",
+                    WebkitTextStroke: "0.3px rgba(0,0,0,0.2)",
+                  }
+                : undefined
+            }
           >
             บันทึก
           </button>

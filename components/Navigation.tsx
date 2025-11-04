@@ -12,9 +12,19 @@ export default function Navigation() {
         href="/"
         className={`px-3 py-1.5 rounded text-xs font-medium transition-all ${
           pathname === "/"
-            ? "bg-line-green text-white"
+            ? "bg-green-700 font-bold shadow-lg ring-2 ring-green-800"
             : "text-gray-600 hover:bg-gray-100 hover:text-line-green"
         }`}
+        style={
+          pathname === "/"
+            ? {
+                color: "#ffffff",
+                textShadow:
+                  "0 1px 3px rgba(0,0,0,0.5), 0 0 1px rgba(0,0,0,0.8)",
+                WebkitTextStroke: "0.3px rgba(0,0,0,0.2)",
+              }
+            : undefined
+        }
       >
         หน้าแรก
       </Link>
@@ -22,9 +32,19 @@ export default function Navigation() {
         href="/calendar"
         className={`px-3 py-1.5 rounded text-xs font-medium transition-all ${
           pathname === "/calendar"
-            ? "bg-line-green text-white"
+            ? "bg-green-700 font-bold shadow-lg ring-2 ring-green-800"
             : "text-gray-600 hover:bg-gray-100 hover:text-line-green"
         }`}
+        style={
+          pathname === "/calendar"
+            ? {
+                color: "#ffffff",
+                textShadow:
+                  "0 1px 3px rgba(0,0,0,0.5), 0 0 1px rgba(0,0,0,0.8)",
+                WebkitTextStroke: "0.3px rgba(0,0,0,0.2)",
+              }
+            : undefined
+        }
       >
         ปฏิทินวันลา
       </Link>
