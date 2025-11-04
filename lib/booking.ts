@@ -1,4 +1,5 @@
 import { Booking, LeaveCategory } from "@/types/booking";
+import { logCreate, logUpdate, logDelete } from "@/lib/history";
 
 const STORAGE_KEY = "line_liff_bookings";
 
@@ -31,6 +32,8 @@ export const saveBooking = (
 
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(bookings));
+    // บันทึกประวัติการสร้าง
+    logCreate(newBooking);
   } catch (error) {
     console.error("Failed to save booking:", error);
     throw error;
@@ -48,13 +51,33 @@ export const updateBooking = (
 
   if (!booking) return null;
 
+  // เก็บข้อมูลเก่าก่อนแก้ไข
+  const oldData: Partial<Booking> = {
+    date: booking.date,
+    endDate: booking.endDate,
+    category: booking.category,
+    reason: booking.reason,
+    updatedAt: booking.updatedAt,
+  };
+
   Object.assign(booking, {
     ...updates,
     updatedAt: new Date().toISOString(),
   });
 
+  // เก็บข้อมูลใหม่หลังแก้ไข
+  const newData: Partial<Booking> = {
+    date: booking.date,
+    endDate: booking.endDate,
+    category: booking.category,
+    reason: booking.reason,
+    updatedAt: booking.updatedAt,
+  };
+
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(bookings));
+    // บันทึกประวัติการแก้ไข
+    logUpdate(bookingId, booking.userId, booking.userName, oldData, newData);
     return booking;
   } catch (error) {
     console.error("Failed to update booking:", error);
@@ -64,10 +87,26 @@ export const updateBooking = (
 
 export const deleteBooking = (bookingId: string): boolean => {
   const bookings = getBookings();
+  const booking = bookings.find((b) => b.id === bookingId);
+
+  if (!booking) return false;
+
+  // เก็บข้อมูลการจองก่อนลบ
+  const bookingData: Partial<Booking> = {
+    date: booking.date,
+    endDate: booking.endDate,
+    category: booking.category,
+    reason: booking.reason,
+    createdAt: booking.createdAt,
+    updatedAt: booking.updatedAt,
+  };
+
   const filtered = bookings.filter((b) => b.id !== bookingId);
 
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(filtered));
+    // บันทึกประวัติการลบ
+    logDelete(bookingId, booking.userId, booking.userName, bookingData);
     return true;
   } catch (error) {
     console.error("Failed to delete booking:", error);

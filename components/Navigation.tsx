@@ -28,6 +28,16 @@ export default function Navigation() {
       >
         ปฏิทินวันลา
       </Link>
+      <Link
+        href="/history"
+        className={`px-4 py-2 rounded-lg text-xs font-medium transition-all active:scale-95 ${
+          pathname === "/history"
+            ? "bg-green-600 hover:bg-green-700 text-white shadow-md"
+            : "bg-gray-200 hover:bg-gray-300 text-gray-700"
+        }`}
+      >
+        ประวัติ
+      </Link>
     </nav>
   );
 }
