@@ -56,6 +56,21 @@ export default function CalendarPage() {
   }, [selectedDate]);
 
   const handleDateSelect = (date: Date) => {
+    // ถ้ากำลังแก้ไข: เปลี่ยนวันที่ในการแก้ไข
+    if (editingBooking) {
+      // ถ้ายังไม่มีวันเริ่มต้น หรือเลือกวันที่เร็วกว่า/เท่ากับวันเริ่มต้น: ตั้งเป็นวันเริ่มต้นใหม่
+      if (!selectedDate || date <= selectedDate) {
+        setSelectedDate(date);
+        setEndDate(date);
+        setShowDateError("");
+      } else {
+        // เลือกวันที่หลังจากวันเริ่มต้น: ตั้งเป็นวันสิ้นสุด
+        setEndDate(date);
+        setShowDateError("");
+      }
+      return;
+    }
+
     // ถ้าไม่ได้เปิดโหมดลงทะเบียน ให้แสดงรายละเอียดการจองเท่านั้น
     if (!isRegistrationMode) {
       setSelectedDate(date);
@@ -67,13 +82,12 @@ export default function CalendarPage() {
       return;
     }
 
-    // โหมดลงทะเบียน
+    // โหมดลงทะเบียน (สร้างใหม่)
     // ถ้าเลือกวันเริ่มต้นและวันสิ้นสุดไปแล้ว (showBookingForm = true) ให้รีเซ็ตและเลือกวันใหม่เป็นวันเริ่มต้น
-    if (showBookingForm && selectedDate && endDate) {
+    if (showBookingForm && selectedDate && endDate && !editingBooking) {
       setSelectedDate(date);
       setEndDate(date);
       setShowBookingForm(false);
-      setEditingBooking(null);
       setValidationError("");
       setShowDateError("");
       setFormData({
@@ -88,7 +102,6 @@ export default function CalendarPage() {
       setSelectedDate(date);
       setEndDate(date);
       setShowBookingForm(false);
-      setEditingBooking(null);
       setValidationError("");
       setShowDateError("");
     } else {
@@ -100,7 +113,6 @@ export default function CalendarPage() {
       }
       setEndDate(date);
       setShowBookingForm(true);
-      setEditingBooking(null);
       setValidationError("");
       setShowDateError("");
       setFormData({
@@ -198,7 +210,8 @@ export default function CalendarPage() {
       return;
     }
 
-    setIsRegistrationMode(true); // เปิดโหมดลงทะเบียนเมื่อแก้ไข
+    // ไม่เปิดโหมดลงทะเบียนเมื่อแก้ไข - แยกโหมดให้ชัดเจน
+    setIsRegistrationMode(false);
     setEditingBooking(booking);
     setSelectedDate(new Date(booking.date));
     setEndDate(
@@ -210,6 +223,7 @@ export default function CalendarPage() {
     });
     setShowBookingForm(true);
     setValidationError("");
+    setShowDateError("");
   };
 
   const handleDelete = (booking: Booking) => {
@@ -277,54 +291,59 @@ export default function CalendarPage() {
         {/* Header - Jakob's Law: ใช้รูปแบบที่คุ้นเคย */}
         <Navigation />
 
-        {/* Registration Mode Toggle */}
+        {/* Status Banner & Registration Mode Toggle */}
         <div className="mb-3 flex items-center justify-between gap-2">
           <div className="flex-1">
-            {isRegistrationMode && (
+            {editingBooking && (
+              <div className="bg-yellow-50 border-l-4 border-yellow-500 text-yellow-800 p-2 rounded text-xs">
+                ✏️ โหมดแก้ไข - คลิกวันที่ในปฏิทินเพื่อเปลี่ยนช่วงเวลา
+              </div>
+            )}
+            {!editingBooking && isRegistrationMode && (
               <div className="bg-green-50 border-l-4 border-green-500 text-green-800 p-2 rounded text-xs">
                 ✓ คลิกวันที่เพื่อเลือกช่วงเวลาลา
               </div>
             )}
-            {!isRegistrationMode && (
+            {!editingBooking && !isRegistrationMode && (
               <div className="bg-blue-50 border-l-4 border-blue-500 text-blue-800 p-2 rounded text-xs">
                 คลิกวันที่เพื่อดูรายละเอียดการจอง
               </div>
             )}
           </div>
-          <button
-            onClick={() => {
-              if (!isRegistrationMode) {
-                // เปิดโหมดลงทะเบียน: ให้ผู้ใช้เลือกวันเริ่มเอง
-                setIsRegistrationMode(true);
-                setSelectedDate(null);
-                setEndDate(null);
-                setShowBookingForm(false);
-                setEditingBooking(null);
-                setValidationError("");
-                setShowDateError("");
-                setFormData({
-                  category: "domestic",
-                  reason: "",
-                });
-              } else {
-                // ปิดโหมดลงทะเบียน: รีเซ็ตการเลือกวันที่
-                setIsRegistrationMode(false);
-                setSelectedDate(null);
-                setEndDate(null);
-                setShowBookingForm(false);
-                setEditingBooking(null);
-                setValidationError("");
-                setShowDateError("");
-              }
-            }}
-            className={`px-4 py-2 rounded-lg text-xs font-medium transition-all active:scale-95 ${
-              isRegistrationMode
-                ? "bg-green-600 hover:bg-green-700 text-white shadow-md"
-                : "bg-gray-200 hover:bg-gray-300 text-gray-700"
-            }`}
-          >
-            {isRegistrationMode ? "✓ ลงทะเบียน" : "ลงทะเบียน"}
-          </button>
+          {!editingBooking && (
+            <button
+              onClick={() => {
+                if (!isRegistrationMode) {
+                  // เปิดโหมดลงทะเบียน: ให้ผู้ใช้เลือกวันเริ่มเอง
+                  setIsRegistrationMode(true);
+                  setSelectedDate(null);
+                  setEndDate(null);
+                  setShowBookingForm(false);
+                  setValidationError("");
+                  setShowDateError("");
+                  setFormData({
+                    category: "domestic",
+                    reason: "",
+                  });
+                } else {
+                  // ปิดโหมดลงทะเบียน: รีเซ็ตการเลือกวันที่
+                  setIsRegistrationMode(false);
+                  setSelectedDate(null);
+                  setEndDate(null);
+                  setShowBookingForm(false);
+                  setValidationError("");
+                  setShowDateError("");
+                }
+              }}
+              className={`px-4 py-2 rounded-lg text-xs font-medium transition-all active:scale-95 ${
+                isRegistrationMode
+                  ? "bg-green-600 hover:bg-green-700 text-white shadow-md"
+                  : "bg-gray-200 hover:bg-gray-300 text-gray-700"
+              }`}
+            >
+              {isRegistrationMode ? "✓ ลงทะเบียน" : "ลงทะเบียน"}
+            </button>
+          )}
         </div>
 
         {/* Calendar - Miller's Rule: จัดกลุ่มข้อมูล */}
@@ -447,11 +466,13 @@ export default function CalendarPage() {
             setEndDate(null);
             setShowBookingForm(false);
             setEditingBooking(null);
+            setIsRegistrationMode(false);
             setFormData({ category: "domestic", reason: "" });
             setValidationError("");
             setShowDateError("");
           }}
           validationError={validationError}
+          isEditing={!!editingBooking}
         />
       )}
     </div>

@@ -14,6 +14,7 @@ interface BookingFooterProps {
   onConfirm: () => void;
   onCancel: () => void;
   validationError: string;
+  isEditing?: boolean;
 }
 
 export default function BookingFooter({
@@ -26,6 +27,7 @@ export default function BookingFooter({
   onConfirm,
   onCancel,
   validationError,
+  isEditing = false,
 }: BookingFooterProps) {
   const maxDays = getMaxDays(category);
   const daysCount = getDaysCount(selectedDate, endDate);
@@ -34,6 +36,13 @@ export default function BookingFooter({
   return (
     <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 shadow-lg z-50 animate-slide-up">
       <div className="max-w-md mx-auto p-4">
+        {/* Edit Mode Indicator */}
+        {isEditing && (
+          <div className="bg-yellow-50 border-l-4 border-yellow-500 text-yellow-800 p-2 rounded mb-3 text-xs font-medium">
+            ✏️ กำลังแก้ไข - คลิกวันที่ในปฏิทินเพื่อเปลี่ยนช่วงเวลา
+          </div>
+        )}
+
         {validationError && (
           <div className="bg-red-50 border-l-4 border-red-500 text-red-700 p-2 rounded mb-3 text-xs">
             {validationError}
@@ -143,7 +152,7 @@ export default function BookingFooter({
             onClick={onCancel}
             className="flex-1 px-4 py-2 rounded-lg text-xs font-medium transition-all active:scale-95 bg-gray-200 hover:bg-gray-300 text-gray-700"
           >
-            ล้างค่า
+            {isEditing ? "ยกเลิก" : "ล้างค่า"}
           </button>
           <button
             onClick={onConfirm}
@@ -151,10 +160,12 @@ export default function BookingFooter({
             className={`flex-1 px-4 py-2 rounded-lg text-xs font-medium transition-all active:scale-95 ${
               daysCount > maxDays
                 ? "bg-gray-300 text-gray-500 cursor-not-allowed"
+                : isEditing
+                ? "bg-blue-600 hover:bg-blue-700 text-white shadow-md"
                 : "bg-green-600 hover:bg-green-700 text-white shadow-md"
             }`}
           >
-            บันทึก
+            {isEditing ? "บันทึกการแก้ไข" : "บันทึก"}
           </button>
         </div>
       </div>
