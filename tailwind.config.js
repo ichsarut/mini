@@ -11,6 +11,9 @@ module.exports = {
                 'line-green': '#06c755',
                 'line-green-dark': '#05b34a',
             },
+            fontFamily: {
+                'sans': ['Prompt', 'sans-serif'],
+            },
         },
     },
     plugins: [],

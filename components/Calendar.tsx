@@ -16,6 +16,7 @@ interface CalendarProps {
   currentDate?: Date;
   onDateSelect?: (date: Date) => void;
   selectedDate?: Date | null;
+  endDate?: Date | null;
   userId?: string;
 }
 
@@ -23,6 +24,7 @@ export default function Calendar({
   currentDate,
   onDateSelect,
   selectedDate,
+  endDate,
   userId,
 }: CalendarProps) {
   const today = getTodayBangkok();
@@ -84,6 +86,22 @@ export default function Calendar({
     );
   };
 
+  const isEndDate = (day: number): boolean => {
+    if (!endDate || !selectedDate) return false;
+    if (endDate.getTime() === selectedDate.getTime()) return false;
+    return (
+      endDate.getFullYear() === year &&
+      endDate.getMonth() === month &&
+      endDate.getDate() === day
+    );
+  };
+
+  const isDateInRange = (day: number): boolean => {
+    if (!selectedDate || !endDate) return false;
+    const date = new Date(year, month, day);
+    return date >= selectedDate && date <= endDate;
+  };
+
   const isToday = (day: number): boolean => {
     const todayBangkok = getTodayBangkok();
     return (
@@ -128,6 +146,8 @@ export default function Calendar({
       const dayBookings = getBookingsForDay(day);
       const hasBookings = dayBookings.length > 0;
       const dateSelected = isDateSelected(day);
+      const dateEnd = isEndDate(day);
+      const dateInRange = isDateInRange(day);
       const isTodayDate = isToday(day);
       const isDisabled = isDateDisabled(day);
 
@@ -140,6 +160,10 @@ export default function Calendar({
                 ? "bg-gray-100 border border-gray-200 cursor-not-allowed opacity-40"
                 : dateSelected
                 ? "bg-indigo-600 text-white border-2 border-indigo-700 shadow-lg cursor-pointer font-semibold ring-2 ring-indigo-200"
+                : dateEnd
+                ? "bg-purple-600 text-white border-2 border-purple-700 shadow-lg cursor-pointer font-semibold ring-2 ring-purple-200"
+                : dateInRange
+                ? "bg-indigo-100 border border-indigo-300 cursor-pointer"
                 : isTodayDate
                 ? "bg-blue-100 border-2 border-blue-400 cursor-pointer"
                 : hasBookings
@@ -150,8 +174,10 @@ export default function Calendar({
         >
           <span
             className={`text-xs ${
-              dateSelected
+              dateSelected || dateEnd
                 ? "font-bold text-white drop-shadow-sm"
+                : dateInRange
+                ? "font-medium text-indigo-700"
                 : isTodayDate && !isDisabled
                 ? "font-semibold text-blue-700"
                 : isDisabled

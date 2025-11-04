@@ -43,6 +43,7 @@ export default function CalendarPage() {
   const [step, setStep] = useState<
     "category" | "endDate" | "reason" | "summary"
   >("category");
+  const [showDateError, setShowDateError] = useState<string>("");
 
   useEffect(() => {
     if (liff && isLoggedIn) {
@@ -63,16 +64,32 @@ export default function CalendarPage() {
   }, [selectedDate]);
 
   const handleDateSelect = (date: Date) => {
-    setSelectedDate(date);
-    setEndDate(date);
-    setShowBookingForm(true);
-    setEditingBooking(null);
-    setValidationError("");
-    setStep("category");
-    setFormData({
-      category: "domestic",
-      reason: "",
-    });
+    if (!selectedDate) {
+      // คลิกครั้งแรก: เลือกวันเริ่มต้น
+      setSelectedDate(date);
+      setEndDate(date);
+      setShowBookingForm(false);
+      setEditingBooking(null);
+      setValidationError("");
+      setShowDateError("");
+    } else {
+      // คลิกครั้งที่สอง: เลือกวันสิ้นสุด
+      if (date < selectedDate) {
+        setShowDateError("วันที่สิ้นสุดต้องไม่เร็วกว่าวันที่เริ่มต้น");
+        setTimeout(() => setShowDateError(""), 3000);
+        return;
+      }
+      setEndDate(date);
+      setShowBookingForm(true);
+      setEditingBooking(null);
+      setValidationError("");
+      setShowDateError("");
+      setStep("category");
+      setFormData({
+        category: "domestic",
+        reason: "",
+      });
+    }
   };
 
   const handleCategorySelect = (category: LeaveCategory) => {
@@ -276,6 +293,7 @@ export default function CalendarPage() {
         <Calendar
           currentDate={getTodayBangkok()}
           selectedDate={selectedDate}
+          endDate={endDate}
           onDateSelect={handleDateSelect}
           userId={userProfile?.userId}
         />
@@ -283,8 +301,62 @@ export default function CalendarPage() {
         {/* Selected Date Info - Progressive Disclosure */}
         {selectedDate && !showBookingForm && (
           <div className="mt-4 pt-4 border-t border-gray-200">
+            {showDateError && (
+              <div className="bg-red-50 border-l-4 border-red-500 text-red-700 p-2 rounded mb-3 text-xs">
+                {showDateError}
+              </div>
+            )}
             <p className="text-sm text-gray-600 text-center">
-              วันที่เลือก: <strong>{formatDateThai(selectedDate)}</strong>
+              {endDate && endDate.getTime() !== selectedDate.getTime() ? (
+                <>
+                  วันที่เริ่มต้น:{" "}
+                  <strong>{formatDateThai(selectedDate)}</strong>
+                  <br />
+                  วันที่สิ้นสุด: <strong>{formatDateThai(endDate)}</strong>
+                  <br />
+                  <div className="flex gap-2 mt-3 justify-center">
+                    <button
+                      onClick={() => {
+                        setShowBookingForm(true);
+                        setStep("category");
+                        setFormData({ category: "domestic", reason: "" });
+                      }}
+                      className="bg-line-green hover:bg-line-green-dark text-white py-2 px-4 rounded-lg text-sm font-medium transition-colors"
+                    >
+                      ดำเนินการต่อ
+                    </button>
+                    <button
+                      onClick={() => {
+                        setSelectedDate(null);
+                        setEndDate(null);
+                        setShowDateError("");
+                      }}
+                      className="bg-gray-200 hover:bg-gray-300 text-gray-700 py-2 px-4 rounded-lg text-sm font-medium transition-colors"
+                    >
+                      ล้างการเลือก
+                    </button>
+                  </div>
+                </>
+              ) : (
+                <>
+                  วันที่เริ่มต้น:{" "}
+                  <strong>{formatDateThai(selectedDate)}</strong>
+                  <br />
+                  <span className="text-xs text-gray-500 mt-1 block">
+                    คลิกวันที่สิ้นสุดเพื่อเลือกช่วงเวลา
+                  </span>
+                  <button
+                    onClick={() => {
+                      setSelectedDate(null);
+                      setEndDate(null);
+                      setShowDateError("");
+                    }}
+                    className="mt-2 bg-gray-200 hover:bg-gray-300 text-gray-700 py-2 px-3 rounded-lg text-xs font-medium transition-colors"
+                  >
+                    ล้างการเลือก
+                  </button>
+                </>
+              )}
             </p>
           </div>
         )}
@@ -377,7 +449,7 @@ export default function CalendarPage() {
         {/* Empty State - Aesthetic-Usability Effect */}
         {!selectedDate && (
           <div className="mt-4 p-3 bg-gray-50 rounded-lg text-center text-sm text-gray-600">
-            กรุณาเลือกวันที่ในปฏิทินเพื่อจองวันลา
+            คลิกวันที่เริ่มต้นในปฏิทินเพื่อเริ่มจองวันลา
           </div>
         )}
       </div>
@@ -396,6 +468,14 @@ export default function CalendarPage() {
           onConfirm={handleConfirmBooking}
           onBack={handleBack}
           onCancel={() => {
+            setShowBookingForm(false);
+            setEditingBooking(null);
+            // รีเซ็ตแค่ฟอร์ม แต่เก็บวันที่ไว้เพื่อให้เลือกใหม่ได้
+            setFormData({ category: "domestic", reason: "" });
+            setValidationError("");
+            setStep("category");
+          }}
+          onClearSelection={() => {
             setShowBookingForm(false);
             setEditingBooking(null);
             setSelectedDate(null);

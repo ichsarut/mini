@@ -26,6 +26,7 @@ interface BookingFooterProps {
   onConfirm: () => void;
   onBack: () => void;
   onCancel: () => void;
+  onClearSelection?: () => void;
   validationError: string;
 }
 
@@ -41,6 +42,7 @@ export default function BookingFooter({
   onConfirm,
   onBack,
   onCancel,
+  onClearSelection,
   validationError,
 }: BookingFooterProps) {
   const maxDays = getMaxDays(category);

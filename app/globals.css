@@ -1,11 +1,15 @@
 @import "tailwindcss";
 
+/* Import Prompt Font */
+@import url("/fonts/prompt.css");
+
 @layer base {
   * {
     box-sizing: border-box;
   }
 
   body {
+    font-family: "Prompt", sans-serif;
     background-color: rgb(243 244 246); /* bg-gray-100 */
     color: rgb(17 24 39); /* text-gray-900 */
     -webkit-font-smoothing: antialiased;
