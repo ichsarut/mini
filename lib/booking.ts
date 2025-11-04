@@ -1,112 +1,205 @@
 import { Booking, LeaveCategory } from "@/types/booking";
 import { logCreate, logUpdate, logDelete } from "@/lib/history";
+import { supabase } from "@/lib/supabase";
 
-const STORAGE_KEY = "line_liff_bookings";
-
-// เก็บข้อมูลการจองใน localStorage (สำหรับ demo)
-// ใน production ควรใช้ backend API
-export const getBookings = (): Booking[] => {
-  if (typeof window === "undefined") return [];
-
+// ดึงข้อมูลการจองทั้งหมด
+export const getBookings = async (): Promise<Booking[]> => {
   try {
-    const stored = localStorage.getItem(STORAGE_KEY);
-    return stored ? JSON.parse(stored) : [];
+    const { data, error } = await supabase
+      .from("bookings")
+      .select("*")
+      .order("date", { ascending: true });
+
+    if (error) {
+      console.error("Failed to get bookings:", error);
+      return [];
+    }
+
+    // แปลงข้อมูลจาก Supabase format เป็น Booking format
+    return (
+      data?.map((row) => ({
+        id: row.id,
+        date: row.date,
+        endDate: row.end_date || undefined,
+        userId: row.user_id,
+        userName: row.user_name,
+        category: row.category,
+        reason: row.reason || undefined,
+        createdAt: row.created_at,
+        updatedAt: row.updated_at || undefined,
+      })) || []
+    );
   } catch (error) {
     console.error("Failed to get bookings:", error);
     return [];
   }
 };
 
-export const saveBooking = (
+// บันทึกการจองใหม่
+export const saveBooking = async (
   booking: Omit<Booking, "id" | "createdAt">
-): Booking => {
-  const bookings = getBookings();
-
-  const newBooking: Booking = {
-    ...booking,
-    id: `booking_${Date.now()}_${Math.random().toString(36).slice(2, 11)}`,
-    createdAt: new Date().toISOString(),
-  };
-
-  bookings.push(newBooking);
-
+): Promise<Booking> => {
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(bookings));
+    const { data, error } = await supabase
+      .from("bookings")
+      .insert({
+        date: booking.date,
+        end_date: booking.endDate || null,
+        user_id: booking.userId,
+        user_name: booking.userName,
+        category: booking.category,
+        reason: booking.reason || null,
+      })
+      .select()
+      .single();
+
+    if (error) {
+      console.error("Failed to save booking:", error);
+      throw error;
+    }
+
+    const newBooking: Booking = {
+      id: data.id,
+      date: data.date,
+      endDate: data.end_date || undefined,
+      userId: data.user_id,
+      userName: data.user_name,
+      category: data.category,
+      reason: data.reason || undefined,
+      createdAt: data.created_at,
+      updatedAt: data.updated_at || undefined,
+    };
+
     // บันทึกประวัติการสร้าง
-    logCreate(newBooking);
+    await logCreate(newBooking);
+
+    return newBooking;
   } catch (error) {
     console.error("Failed to save booking:", error);
     throw error;
   }
-
-  return newBooking;
 };
 
-export const updateBooking = (
+// อัปเดตการจอง
+export const updateBooking = async (
   bookingId: string,
   updates: Partial<Omit<Booking, "id" | "userId" | "userName" | "createdAt">>
-): Booking | null => {
-  const bookings = getBookings();
-  const booking = bookings.find((b) => b.id === bookingId);
-
-  if (!booking) return null;
-
-  // เก็บข้อมูลเก่าก่อนแก้ไข
-  const oldData: Partial<Booking> = {
-    date: booking.date,
-    endDate: booking.endDate,
-    category: booking.category,
-    reason: booking.reason,
-    updatedAt: booking.updatedAt,
-  };
-
-  Object.assign(booking, {
-    ...updates,
-    updatedAt: new Date().toISOString(),
-  });
-
-  // เก็บข้อมูลใหม่หลังแก้ไข
-  const newData: Partial<Booking> = {
-    date: booking.date,
-    endDate: booking.endDate,
-    category: booking.category,
-    reason: booking.reason,
-    updatedAt: booking.updatedAt,
-  };
-
+): Promise<Booking | null> => {
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(bookings));
+    // ดึงข้อมูลเก่าก่อนแก้ไข
+    const { data: oldBooking, error: fetchError } = await supabase
+      .from("bookings")
+      .select("*")
+      .eq("id", bookingId)
+      .single();
+
+    if (fetchError || !oldBooking) {
+      console.error("Failed to fetch booking for update:", fetchError);
+      return null;
+    }
+
+    // เก็บข้อมูลเก่าก่อนแก้ไข
+    const oldData: Partial<Booking> = {
+      date: oldBooking.date,
+      endDate: oldBooking.end_date || undefined,
+      category: oldBooking.category,
+      reason: oldBooking.reason || undefined,
+      updatedAt: oldBooking.updated_at || undefined,
+    };
+
+    // อัปเดตข้อมูล
+    const { data, error } = await supabase
+      .from("bookings")
+      .update({
+        date: updates.date,
+        end_date: updates.endDate || null,
+        category: updates.category,
+        reason: updates.reason || null,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", bookingId)
+      .select()
+      .single();
+
+    if (error) {
+      console.error("Failed to update booking:", error);
+      return null;
+    }
+
+    // เก็บข้อมูลใหม่หลังแก้ไข
+    const newData: Partial<Booking> = {
+      date: data.date,
+      endDate: data.end_date || undefined,
+      category: data.category,
+      reason: data.reason || undefined,
+      updatedAt: data.updated_at || undefined,
+    };
+
     // บันทึกประวัติการแก้ไข
-    logUpdate(bookingId, booking.userId, booking.userName, oldData, newData);
-    return booking;
+    await logUpdate(
+      bookingId,
+      oldBooking.user_id,
+      oldBooking.user_name,
+      oldData,
+      newData
+    );
+
+    return {
+      id: data.id,
+      date: data.date,
+      endDate: data.end_date || undefined,
+      userId: data.user_id,
+      userName: data.user_name,
+      category: data.category,
+      reason: data.reason || undefined,
+      createdAt: data.created_at,
+      updatedAt: data.updated_at || undefined,
+    };
   } catch (error) {
     console.error("Failed to update booking:", error);
     return null;
   }
 };
 
-export const deleteBooking = (bookingId: string): boolean => {
-  const bookings = getBookings();
-  const booking = bookings.find((b) => b.id === bookingId);
-
-  if (!booking) return false;
-
-  // เก็บข้อมูลการจองก่อนลบ
-  const bookingData: Partial<Booking> = {
-    date: booking.date,
-    endDate: booking.endDate,
-    category: booking.category,
-    reason: booking.reason,
-    createdAt: booking.createdAt,
-    updatedAt: booking.updatedAt,
-  };
-
-  const filtered = bookings.filter((b) => b.id !== bookingId);
-
+// ลบการจอง
+export const deleteBooking = async (bookingId: string): Promise<boolean> => {
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(filtered));
+    // ดึงข้อมูลการจองก่อนลบ
+    const { data: booking, error: fetchError } = await supabase
+      .from("bookings")
+      .select("*")
+      .eq("id", bookingId)
+      .single();
+
+    if (fetchError || !booking) {
+      console.error("Failed to fetch booking for delete:", fetchError);
+      return false;
+    }
+
+    // เก็บข้อมูลการจองก่อนลบ
+    const bookingData: Partial<Booking> = {
+      date: booking.date,
+      endDate: booking.end_date || undefined,
+      category: booking.category,
+      reason: booking.reason || undefined,
+      createdAt: booking.created_at,
+      updatedAt: booking.updated_at || undefined,
+    };
+
+    // ลบการจอง
+    const { error } = await supabase
+      .from("bookings")
+      .delete()
+      .eq("id", bookingId);
+
+    if (error) {
+      console.error("Failed to delete booking:", error);
+      return false;
+    }
+
     // บันทึกประวัติการลบ
-    logDelete(bookingId, booking.userId, booking.userName, bookingData);
+    await logDelete(bookingId, booking.user_id, booking.user_name, bookingData);
+
     return true;
   } catch (error) {
     console.error("Failed to delete booking:", error);
@@ -114,18 +207,69 @@ export const deleteBooking = (bookingId: string): boolean => {
   }
 };
 
-export const getBookingsByDate = (date: string): Booking[] => {
-  const bookings = getBookings();
-  return bookings.filter((b) => {
-    if (b.date === date) return true;
-    if (b.endDate) {
-      const start = new Date(b.date);
-      const end = new Date(b.endDate);
-      const checkDate = new Date(date);
-      return checkDate >= start && checkDate <= end;
+// ดึงข้อมูลการจองตามวันที่
+export const getBookingsByDate = async (date: string): Promise<Booking[]> => {
+  try {
+    // ดึงข้อมูลที่อาจมีวันที่ตรงกัน (วันเริ่มต้น = date หรืออยู่ในช่วง date)
+    const checkDate = new Date(date);
+    const checkDateStr = checkDate.toISOString().split("T")[0];
+
+    // Query วันที่เริ่มต้นตรงกัน
+    const { data: exactDateData, error: exactError } = await supabase
+      .from("bookings")
+      .select("*")
+      .eq("date", checkDateStr);
+
+    if (exactError) {
+      console.error("Failed to get bookings by date:", exactError);
     }
-    return false;
-  });
+
+    // Query วันที่อยู่ในช่วง (date <= checkDate <= end_date)
+    const { data: rangeData, error: rangeError } = await supabase
+      .from("bookings")
+      .select("*")
+      .lte("date", checkDateStr)
+      .gte("end_date", checkDateStr)
+      .not("end_date", "is", null);
+
+    if (rangeError) {
+      console.error("Failed to get bookings by date range:", rangeError);
+    }
+
+    // รวมข้อมูลและลบ duplicates
+    const allBookings = [...(exactDateData || []), ...(rangeData || [])];
+
+    // ลบ duplicates โดยใช้ Set
+    const uniqueBookings = Array.from(
+      new Map(allBookings.map((b) => [b.id, b])).values()
+    );
+
+    // กรองข้อมูลให้ตรงกับวันที่ที่ต้องการ
+    const filtered = uniqueBookings.filter((b) => {
+      if (b.date === checkDateStr) return true;
+      if (b.end_date) {
+        const start = new Date(b.date);
+        const end = new Date(b.end_date);
+        return checkDate >= start && checkDate <= end;
+      }
+      return false;
+    });
+
+    return filtered.map((row) => ({
+      id: row.id,
+      date: row.date,
+      endDate: row.end_date || undefined,
+      userId: row.user_id,
+      userName: row.user_name,
+      category: row.category,
+      reason: row.reason || undefined,
+      createdAt: row.created_at,
+      updatedAt: row.updated_at || undefined,
+    }));
+  } catch (error) {
+    console.error("Failed to get bookings by date:", error);
+    return [];
+  }
 };
 
 // Helper: Get all dates in a range
@@ -146,14 +290,44 @@ export const getDatesInRange = (
   return dates;
 };
 
-export const getBookingsByMonth = (year: number, month: number): Booking[] => {
-  const bookings = getBookings();
-  return bookings.filter((booking) => {
-    const bookingDate = new Date(booking.date);
+// ดึงข้อมูลการจองตามเดือน
+export const getBookingsByMonth = async (
+  year: number,
+  month: number
+): Promise<Booking[]> => {
+  try {
+    const startDate = `${year}-${String(month + 1).padStart(2, "0")}-01`;
+    const endDate = new Date(year, month + 1, 0).toISOString().split("T")[0];
+
+    const { data, error } = await supabase
+      .from("bookings")
+      .select("*")
+      .gte("date", startDate)
+      .lte("date", endDate)
+      .order("date", { ascending: true });
+
+    if (error) {
+      console.error("Failed to get bookings by month:", error);
+      return [];
+    }
+
     return (
-      bookingDate.getFullYear() === year && bookingDate.getMonth() === month
+      data?.map((row) => ({
+        id: row.id,
+        date: row.date,
+        endDate: row.end_date || undefined,
+        userId: row.user_id,
+        userName: row.user_name,
+        category: row.category,
+        reason: row.reason || undefined,
+        createdAt: row.created_at,
+        updatedAt: row.updated_at || undefined,
+      })) || []
     );
-  });
+  } catch (error) {
+    console.error("Failed to get bookings by month:", error);
+    return [];
+  }
 };
 
 export const getLeaveCategoryLabel = (category: LeaveCategory): string => {
@@ -175,11 +349,11 @@ export interface ValidationResult {
 }
 
 // ตรวจสอบว่าวันนั้นมีคนจองเกิน 2 คนหรือยัง
-export const validateDateCapacity = (
+export const validateDateCapacity = async (
   date: string,
   excludeBookingId?: string
-): ValidationResult => {
-  const bookings = getBookingsByDate(date);
+): Promise<ValidationResult> => {
+  const bookings = await getBookingsByDate(date);
   const filtered = excludeBookingId
     ? bookings.filter((b) => b.id !== excludeBookingId)
     : bookings;
@@ -217,12 +391,12 @@ export const validateMaxDays = (
 };
 
 // ตรวจสอบว่าคนนี้ลาหลายเดือนเกิน 1 ครั้งหรือยัง
-export const validateMonthlyLimit = (
+export const validateMonthlyLimit = async (
   userId: string,
   date: string,
   excludeBookingId?: string
-): ValidationResult => {
-  const bookings = getBookings();
+): Promise<ValidationResult> => {
+  const bookings = await getBookings();
   const bookingDate = new Date(date);
   const year = bookingDate.getFullYear();
   const month = bookingDate.getMonth();
@@ -265,13 +439,13 @@ export const validateCanEdit = (bookingDate: string): ValidationResult => {
 };
 
 // ตรวจสอบทุกอย่างรวมกัน
-export const validateBooking = (
+export const validateBooking = async (
   userId: string,
   startDate: string,
   endDate: string,
   category: LeaveCategory,
   excludeBookingId?: string
-): ValidationResult => {
+): Promise<ValidationResult> => {
   // ตรวจสอบจำนวนวันสูงสุด
   const maxDaysCheck = validateMaxDays(startDate, endDate, category);
   if (!maxDaysCheck.valid) return maxDaysCheck;
@@ -279,7 +453,7 @@ export const validateBooking = (
   // ตรวจสอบว่าทุกวันมีคนจองเกิน 2 คนหรือยัง
   const dates = getDatesInRange(startDate, endDate);
   for (const date of dates) {
-    const capacityCheck = validateDateCapacity(date, excludeBookingId);
+    const capacityCheck = await validateDateCapacity(date, excludeBookingId);
     if (!capacityCheck.valid) {
       return {
         valid: false,
@@ -289,7 +463,7 @@ export const validateBooking = (
   }
 
   // ตรวจสอบว่าลาหลายเดือนเกิน 1 ครั้งหรือยัง
-  const monthlyCheck = validateMonthlyLimit(
+  const monthlyCheck = await validateMonthlyLimit(
     userId,
     startDate,
     excludeBookingId

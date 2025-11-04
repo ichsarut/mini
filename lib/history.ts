@@ -1,14 +1,32 @@
 import { HistoryEntry, Booking } from "@/types/booking";
+import { supabase } from "@/lib/supabase";
 
-const STORAGE_KEY = "line_liff_booking_history";
-
-// เก็บประวัติการเปลี่ยนแปลงใน localStorage
-export const getHistory = (): HistoryEntry[] => {
-  if (typeof window === "undefined") return [];
-
+// ดึงประวัติทั้งหมด
+export const getHistory = async (): Promise<HistoryEntry[]> => {
   try {
-    const stored = localStorage.getItem(STORAGE_KEY);
-    return stored ? JSON.parse(stored) : [];
+    const { data, error } = await supabase
+      .from("booking_history")
+      .select("*")
+      .order("timestamp", { ascending: false });
+
+    if (error) {
+      console.error("Failed to get history:", error);
+      return [];
+    }
+
+    return (
+      data?.map((row) => ({
+        id: row.id,
+        action: row.action,
+        bookingId: row.booking_id,
+        userId: row.user_id,
+        userName: row.user_name,
+        timestamp: row.timestamp,
+        oldData: row.old_data as Partial<Booking> | undefined,
+        newData: row.new_data as Partial<Booking> | undefined,
+        bookingData: row.booking_data as Partial<Booking> | undefined,
+      })) || []
+    );
   } catch (error) {
     console.error("Failed to get history:", error);
     return [];
@@ -16,114 +34,232 @@ export const getHistory = (): HistoryEntry[] => {
 };
 
 // บันทึกประวัติใหม่
-export const addHistoryEntry = (entry: Omit<HistoryEntry, "id" | "timestamp">): HistoryEntry => {
-  const history = getHistory();
-
-  const newEntry: HistoryEntry = {
-    ...entry,
-    id: `history_${Date.now()}_${Math.random().toString(36).slice(2, 11)}`,
-    timestamp: new Date().toISOString(),
-  };
-
-  history.push(newEntry);
-
-  // เก็บประวัติล่าสุด 1000 รายการ (เพื่อป้องกัน localStorage เต็ม)
-  const maxHistory = 1000;
-  const trimmedHistory = history.slice(-maxHistory);
-
+export const addHistoryEntry = async (
+  entry: Omit<HistoryEntry, "id" | "timestamp">
+): Promise<HistoryEntry> => {
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(trimmedHistory));
-  } catch (error) {
-    console.error("Failed to save history:", error);
-    // ถ้า localStorage เต็ม ให้ลบประวัติเก่าออก
-    if (error instanceof Error && error.name === "QuotaExceededError") {
-      const reducedHistory = history.slice(-500); // ลดเหลือ 500 รายการ
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(reducedHistory));
+    const { data, error } = await supabase
+      .from("booking_history")
+      .insert({
+        action: entry.action,
+        booking_id: entry.bookingId,
+        user_id: entry.userId,
+        user_name: entry.userName,
+        old_data: entry.oldData || null,
+        new_data: entry.newData || null,
+        booking_data: entry.bookingData || null,
+      })
+      .select()
+      .single();
+
+    if (error) {
+      console.error("Failed to save history:", error);
+      throw error;
     }
+
+    return {
+      id: data.id,
+      action: data.action,
+      bookingId: data.booking_id,
+      userId: data.user_id,
+      userName: data.user_name,
+      timestamp: data.timestamp,
+      oldData: data.old_data as Partial<Booking> | undefined,
+      newData: data.new_data as Partial<Booking> | undefined,
+      bookingData: data.booking_data as Partial<Booking> | undefined,
+    };
+  } catch (error) {
+    console.error("Failed to add history entry:", error);
     throw error;
   }
-
-  return newEntry;
 };
 
 // บันทึกประวัติการสร้าง
-export const logCreate = (booking: Booking): void => {
-  addHistoryEntry({
-    action: "create",
-    bookingId: booking.id,
-    userId: booking.userId,
-    userName: booking.userName,
-    bookingData: {
-      date: booking.date,
-      endDate: booking.endDate,
-      category: booking.category,
-      reason: booking.reason,
-    },
-  });
+export const logCreate = async (booking: Booking): Promise<void> => {
+  try {
+    await addHistoryEntry({
+      action: "create",
+      bookingId: booking.id,
+      userId: booking.userId,
+      userName: booking.userName,
+      bookingData: {
+        date: booking.date,
+        endDate: booking.endDate,
+        category: booking.category,
+        reason: booking.reason,
+      },
+    });
+  } catch (error) {
+    console.error("Failed to log create:", error);
+  }
 };
 
 // บันทึกประวัติการแก้ไข
-export const logUpdate = (
+export const logUpdate = async (
   bookingId: string,
   userId: string,
   userName: string,
   oldData: Partial<Booking>,
   newData: Partial<Booking>
-): void => {
-  addHistoryEntry({
-    action: "update",
-    bookingId,
-    userId,
-    userName,
-    oldData,
-    newData,
-  });
+): Promise<void> => {
+  try {
+    await addHistoryEntry({
+      action: "update",
+      bookingId,
+      userId,
+      userName,
+      oldData,
+      newData,
+    });
+  } catch (error) {
+    console.error("Failed to log update:", error);
+  }
 };
 
 // บันทึกประวัติการลบ
-export const logDelete = (
+export const logDelete = async (
   bookingId: string,
   userId: string,
   userName: string,
   bookingData: Partial<Booking>
-): void => {
-  addHistoryEntry({
-    action: "delete",
-    bookingId,
-    userId,
-    userName,
-    oldData: bookingData,
-  });
-};
-
-// ดึงประวัติตาม bookingId
-export const getHistoryByBookingId = (bookingId: string): HistoryEntry[] => {
-  const history = getHistory();
-  return history.filter((entry) => entry.bookingId === bookingId);
-};
-
-// ดึงประวัติตาม userId
-export const getHistoryByUserId = (userId: string): HistoryEntry[] => {
-  const history = getHistory();
-  return history.filter((entry) => entry.userId === userId);
-};
-
-// ดึงประวัติทั้งหมด (เรียงตามเวลาใหม่สุดก่อน)
-export const getAllHistory = (limit?: number): HistoryEntry[] => {
-  const history = getHistory();
-  const sorted = history.sort((a, b) => {
-    return new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime();
-  });
-  return limit ? sorted.slice(0, limit) : sorted;
-};
-
-// ล้างประวัติทั้งหมด (สำหรับการทดสอบหรือ reset)
-export const clearHistory = (): void => {
-  if (typeof window === "undefined") return;
+): Promise<void> => {
   try {
-    localStorage.removeItem(STORAGE_KEY);
+    await addHistoryEntry({
+      action: "delete",
+      bookingId,
+      userId,
+      userName,
+      oldData: bookingData,
+    });
   } catch (error) {
-    console.error("Failed to clear history:", error);
+    console.error("Failed to log delete:", error);
   }
 };
 
+// ดึงประวัติตาม bookingId
+export const getHistoryByBookingId = async (
+  bookingId: string
+): Promise<HistoryEntry[]> => {
+  try {
+    const { data, error } = await supabase
+      .from("booking_history")
+      .select("*")
+      .eq("booking_id", bookingId)
+      .order("timestamp", { ascending: false });
+
+    if (error) {
+      console.error("Failed to get history by booking ID:", error);
+      return [];
+    }
+
+    return (
+      data?.map((row) => ({
+        id: row.id,
+        action: row.action,
+        bookingId: row.booking_id,
+        userId: row.user_id,
+        userName: row.user_name,
+        timestamp: row.timestamp,
+        oldData: row.old_data as Partial<Booking> | undefined,
+        newData: row.new_data as Partial<Booking> | undefined,
+        bookingData: row.booking_data as Partial<Booking> | undefined,
+      })) || []
+    );
+  } catch (error) {
+    console.error("Failed to get history by booking ID:", error);
+    return [];
+  }
+};
+
+// ดึงประวัติตาม userId
+export const getHistoryByUserId = async (
+  userId: string
+): Promise<HistoryEntry[]> => {
+  try {
+    const { data, error } = await supabase
+      .from("booking_history")
+      .select("*")
+      .eq("user_id", userId)
+      .order("timestamp", { ascending: false });
+
+    if (error) {
+      console.error("Failed to get history by user ID:", error);
+      return [];
+    }
+
+    return (
+      data?.map((row) => ({
+        id: row.id,
+        action: row.action,
+        bookingId: row.booking_id,
+        userId: row.user_id,
+        userName: row.user_name,
+        timestamp: row.timestamp,
+        oldData: row.old_data as Partial<Booking> | undefined,
+        newData: row.new_data as Partial<Booking> | undefined,
+        bookingData: row.booking_data as Partial<Booking> | undefined,
+      })) || []
+    );
+  } catch (error) {
+    console.error("Failed to get history by user ID:", error);
+    return [];
+  }
+};
+
+// ดึงประวัติทั้งหมด (เรียงตามเวลาใหม่สุดก่อน)
+export const getAllHistory = async (
+  limit?: number
+): Promise<HistoryEntry[]> => {
+  try {
+    let query = supabase
+      .from("booking_history")
+      .select("*")
+      .order("timestamp", { ascending: false });
+
+    if (limit) {
+      query = query.limit(limit);
+    }
+
+    const { data, error } = await query;
+
+    if (error) {
+      console.error("Failed to get all history:", error);
+      return [];
+    }
+
+    return (
+      data?.map((row) => ({
+        id: row.id,
+        action: row.action,
+        bookingId: row.booking_id,
+        userId: row.user_id,
+        userName: row.user_name,
+        timestamp: row.timestamp,
+        oldData: row.old_data as Partial<Booking> | undefined,
+        newData: row.new_data as Partial<Booking> | undefined,
+        bookingData: row.booking_data as Partial<Booking> | undefined,
+      })) || []
+    );
+  } catch (error) {
+    console.error("Failed to get all history:", error);
+    return [];
+  }
+};
+
+// ล้างประวัติทั้งหมด (สำหรับการทดสอบหรือ reset) - ควรระวังการใช้งาน
+export const clearHistory = async (): Promise<void> => {
+  try {
+    const { error } = await supabase
+      .from("booking_history")
+      .delete()
+      .neq("id", "00000000-0000-0000-0000-000000000000");
+
+    if (error) {
+      console.error("Failed to clear history:", error);
+      throw error;
+    }
+  } catch (error) {
+    console.error("Failed to clear history:", error);
+    throw error;
+  }
+};

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { getBookingsByMonth, getBookingsByDate } from "@/lib/booking";
+import { getBookingsByMonth } from "@/lib/booking";
 import {
   getBangkokDate,
   getTodayBangkok,
@@ -40,8 +40,11 @@ export default function Calendar({
   const maxDate = getMaxBookingDate();
 
   useEffect(() => {
-    const monthBookings = getBookingsByMonth(year, month);
-    setBookings(monthBookings);
+    const loadBookings = async () => {
+      const monthBookings = await getBookingsByMonth(year, month);
+      setBookings(monthBookings);
+    };
+    loadBookings();
   }, [year, month]);
 
   const firstDayOfMonth = new Date(year, month, 1);
@@ -72,9 +75,22 @@ export default function Calendar({
   };
 
   const getBookingsForDay = (day: number): Booking[] => {
+    // Note: This function is called synchronously in renderCalendarDays
+    // We'll use the bookings state that's already loaded for the month
     const date = new Date(year, month, day);
     const dateStr = formatDateString(date);
-    return getBookingsByDate(dateStr);
+
+    // Filter from already loaded bookings
+    return bookings.filter((b) => {
+      if (b.date === dateStr) return true;
+      if (b.endDate) {
+        const start = new Date(b.date);
+        const end = new Date(b.endDate);
+        const checkDate = new Date(dateStr);
+        return checkDate >= start && checkDate <= end;
+      }
+      return false;
+    });
   };
 
   const isDateSelected = (day: number): boolean => {

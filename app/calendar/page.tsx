@@ -47,13 +47,16 @@ export default function CalendarPage() {
   }, [liff, isLoggedIn]);
 
   useEffect(() => {
-    if (selectedDate) {
-      const dateStr = formatDateString(selectedDate);
-      const dayBookings = getBookingsByDate(dateStr);
-      setBookings(dayBookings);
-    } else {
-      setBookings([]);
-    }
+    const loadBookings = async () => {
+      if (selectedDate) {
+        const dateStr = formatDateString(selectedDate);
+        const dayBookings = await getBookingsByDate(dateStr);
+        setBookings(dayBookings);
+      } else {
+        setBookings([]);
+      }
+    };
+    loadBookings();
   }, [selectedDate]);
 
   const handleDateSelect = (date: Date) => {
@@ -132,7 +135,7 @@ export default function CalendarPage() {
     setFormData({ ...formData, reason });
   };
 
-  const handleConfirmBooking = () => {
+  const handleConfirmBooking = async () => {
     setValidationError("");
 
     if (!selectedDate || !userProfile || !endDate) {
@@ -144,7 +147,7 @@ export default function CalendarPage() {
     const endDateStr = formatDateString(endDate);
 
     // Validate
-    const validation = validateBooking(
+    const validation = await validateBooking(
       userProfile.userId,
       startDateStr,
       endDateStr,
@@ -166,7 +169,7 @@ export default function CalendarPage() {
           return;
         }
 
-        updateBooking(editingBooking.id, {
+        await updateBooking(editingBooking.id, {
           date: startDateStr,
           endDate: endDateStr !== startDateStr ? endDateStr : undefined,
           category: formData.category,
@@ -174,7 +177,7 @@ export default function CalendarPage() {
         });
       } else {
         // Create new booking
-        saveBooking({
+        await saveBooking({
           date: startDateStr,
           endDate: endDateStr !== startDateStr ? endDateStr : undefined,
           userId: userProfile.userId,
@@ -185,7 +188,7 @@ export default function CalendarPage() {
       }
 
       // Refresh bookings
-      const dayBookings = getBookingsByDate(startDateStr);
+      const dayBookings = await getBookingsByDate(startDateStr);
       setBookings(dayBookings);
 
       // Reset form
@@ -227,7 +230,7 @@ export default function CalendarPage() {
     setShowDateError("");
   };
 
-  const handleDelete = (booking: Booking) => {
+  const handleDelete = async (booking: Booking) => {
     const canEdit = validateCanEdit(booking.date);
     if (!canEdit.valid) {
       alert(canEdit.error || "ไม่สามารถลบได้");
@@ -244,10 +247,11 @@ export default function CalendarPage() {
       return;
     }
 
-    if (deleteBooking(booking.id)) {
+    const success = await deleteBooking(booking.id);
+    if (success) {
       if (selectedDate) {
         const dateStr = formatDateString(selectedDate);
-        const dayBookings = getBookingsByDate(dateStr);
+        const dayBookings = await getBookingsByDate(dateStr);
         setBookings(dayBookings);
       }
       alert("ลบการจองสำเร็จ!");

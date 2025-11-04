@@ -17,10 +17,13 @@ export default function HistoryPage() {
   );
 
   useEffect(() => {
-    if (typeof window !== "undefined") {
-      const allHistory = getAllHistory();
-      setHistory(allHistory);
-    }
+    const loadHistory = async () => {
+      if (typeof window !== "undefined") {
+        const allHistory = await getAllHistory();
+        setHistory(allHistory);
+      }
+    };
+    loadHistory();
   }, []);
 
   // กรองประวัติตาม action
