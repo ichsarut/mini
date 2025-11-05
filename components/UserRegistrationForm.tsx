@@ -175,7 +175,7 @@ export default function UserRegistrationForm({
 
         {/* ปุ่ม */}
         <div className="flex gap-2 pt-2">
-          {onCancel && (
+          {onCancel && isEditMode && (
             <button
               type="button"
               onClick={onCancel}
@@ -188,7 +188,9 @@ export default function UserRegistrationForm({
           <button
             type="submit"
             disabled={isSubmitting || isLoading}
-            className="flex-1 px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-md"
+            className={`${
+              onCancel && isEditMode ? "flex-1" : "w-full"
+            } px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-md`}
           >
             {isSubmitting || isLoading
               ? "กำลังบันทึก..."

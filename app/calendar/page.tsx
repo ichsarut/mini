@@ -6,23 +6,143 @@ import Calendar from "@/components/Calendar";
 import Navigation from "@/components/Navigation";
 import BookingFooter from "@/components/BookingFooter";
 import Loading from "@/components/Loading";
-import {
-  saveBooking,
-  updateBooking,
-  deleteBooking,
-  getBookingsByDate,
-  getLeaveCategoryLabel,
-  validateBooking,
-  validateCanEdit,
-} from "@/lib/booking";
+import { getLeaveCategoryLabel, validateCanEdit } from "@/lib/booking";
 import {
   getTodayBangkok,
   formatDateString,
   formatDateShort,
 } from "@/lib/dateUtils";
-import { getUserByLineId } from "@/lib/user";
 import type { Booking, LeaveCategory } from "@/types/booking";
 import type { User } from "@/types/user";
+
+// API helper functions
+const getUserByLineId = async (lineUserId: string): Promise<User | null> => {
+  try {
+    const response = await fetch(
+      `/api/users?lineUserId=${encodeURIComponent(lineUserId)}`
+    );
+    if (response.status === 404) {
+      return null;
+    }
+    if (!response.ok) {
+      throw new Error("Failed to fetch user");
+    }
+    return await response.json();
+  } catch (error) {
+    console.error("Failed to get user:", error);
+    return null;
+  }
+};
+
+const getBookingsByDate = async (date: string): Promise<Booking[]> => {
+  try {
+    const response = await fetch(
+      `/api/bookings?date=${encodeURIComponent(date)}`
+    );
+    if (!response.ok) {
+      throw new Error("Failed to fetch bookings");
+    }
+    return await response.json();
+  } catch (error) {
+    console.error("Failed to get bookings:", error);
+    return [];
+  }
+};
+
+const saveBooking = async (
+  booking: Omit<Booking, "id" | "createdAt">
+): Promise<Booking> => {
+  try {
+    const response = await fetch("/api/bookings", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ booking, validate: true }),
+    });
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || "Failed to create booking");
+    }
+    return await response.json();
+  } catch (error: any) {
+    console.error("Failed to save booking:", error);
+    throw error;
+  }
+};
+
+const updateBooking = async (
+  bookingId: string,
+  updates: Partial<Omit<Booking, "id" | "userId" | "userName" | "createdAt">>
+): Promise<Booking | null> => {
+  try {
+    const response = await fetch("/api/bookings", {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ bookingId, updates, validate: true }),
+    });
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || "Failed to update booking");
+    }
+    return await response.json();
+  } catch (error: any) {
+    console.error("Failed to update booking:", error);
+    throw error;
+  }
+};
+
+const deleteBooking = async (bookingId: string): Promise<boolean> => {
+  try {
+    const response = await fetch(
+      `/api/bookings?id=${encodeURIComponent(bookingId)}`,
+      {
+        method: "DELETE",
+      }
+    );
+    if (!response.ok) {
+      throw new Error("Failed to delete booking");
+    }
+    const result = await response.json();
+    return result.success === true;
+  } catch (error) {
+    console.error("Failed to delete booking:", error);
+    return false;
+  }
+};
+
+const validateBooking = async (
+  userId: string,
+  startDate: string,
+  endDate: string,
+  category: LeaveCategory,
+  excludeBookingId?: string
+): Promise<{ valid: boolean; error?: string }> => {
+  try {
+    const response = await fetch("/api/bookings/validate", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        userId,
+        startDate,
+        endDate,
+        category,
+        excludeBookingId,
+      }),
+    });
+    if (!response.ok) {
+      throw new Error("Validation failed");
+    }
+    return await response.json();
+  } catch (error) {
+    console.error("Failed to validate booking:", error);
+    return { valid: false, error: "Validation failed" };
+  }
+};
 
 export default function CalendarPage() {
   const { liff, loading, isLoggedIn, isInClient } = useLiff();
@@ -310,7 +430,7 @@ export default function CalendarPage() {
     <div className="min-h-screen p-2 flex justify-center items-start bg-gray-50 pb-80">
       <div className="bg-white rounded-lg p-3 shadow-sm max-w-full w-full">
         {/* Header - Jakob's Law: ใช้รูปแบบที่คุ้นเคย */}
-        <Navigation />
+        <Navigation showAllTabs={true} />
 
         {/* Status Banner & Registration Mode Toggle */}
         <div className="mb-3 flex items-center justify-between gap-2">

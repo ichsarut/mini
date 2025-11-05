@@ -4,20 +4,112 @@ import { useState, useEffect } from "react";
 import { useLiff } from "@/hooks/useLiff";
 import Navigation from "@/components/Navigation";
 import Loading from "@/components/Loading";
-import {
-  getTimePeriodReport,
-  getUserReport,
-  getDayStatsReport,
-  getCategoryReport,
-  getSummaryReport,
-  getMonthlyLeaveReport,
-  type TimePeriodReport,
-  type UserReport,
-  type DayStatsReport,
-  type CategoryReport,
-  type SummaryReport,
-  type MonthlyLeaveReport,
+import type {
+  TimePeriodReport,
+  UserReport,
+  DayStatsReport,
+  CategoryReport,
+  SummaryReport,
+  MonthlyLeaveReport,
 } from "@/lib/reports";
+
+// API helper functions
+const getSummaryReport = async (): Promise<SummaryReport> => {
+  try {
+    const response = await fetch("/api/reports?type=summary");
+    if (!response.ok) {
+      throw new Error("Failed to fetch summary report");
+    }
+    return await response.json();
+  } catch (error) {
+    console.error("Failed to get summary report:", error);
+    return {
+      totalBookings: 0,
+      totalDays: 0,
+      totalUsers: 0,
+      domesticBookings: 0,
+      internationalBookings: 0,
+      domesticDays: 0,
+      internationalDays: 0,
+      averageDaysPerBooking: 0,
+    };
+  }
+};
+
+const getTimePeriodReport = async (
+  periodType: "month" | "year"
+): Promise<TimePeriodReport[]> => {
+  try {
+    const response = await fetch(
+      `/api/reports?type=time&periodType=${periodType}`
+    );
+    if (!response.ok) {
+      throw new Error("Failed to fetch time period report");
+    }
+    return await response.json();
+  } catch (error) {
+    console.error("Failed to get time period report:", error);
+    return [];
+  }
+};
+
+const getCategoryReport = async (): Promise<CategoryReport[]> => {
+  try {
+    const response = await fetch("/api/reports?type=category");
+    if (!response.ok) {
+      throw new Error("Failed to fetch category report");
+    }
+    return await response.json();
+  } catch (error) {
+    console.error("Failed to get category report:", error);
+    return [];
+  }
+};
+
+const getUserReport = async (): Promise<UserReport[]> => {
+  try {
+    const response = await fetch("/api/reports?type=user");
+    if (!response.ok) {
+      throw new Error("Failed to fetch user report");
+    }
+    return await response.json();
+  } catch (error) {
+    console.error("Failed to get user report:", error);
+    return [];
+  }
+};
+
+const getDayStatsReport = async (limit: number): Promise<DayStatsReport[]> => {
+  try {
+    const response = await fetch(`/api/reports?type=day&limit=${limit}`);
+    if (!response.ok) {
+      throw new Error("Failed to fetch day stats report");
+    }
+    return await response.json();
+  } catch (error) {
+    console.error("Failed to get day stats report:", error);
+    return [];
+  }
+};
+
+const getMonthlyLeaveReport = async (
+  year: number,
+  month: number
+): Promise<MonthlyLeaveReport[]> => {
+  try {
+    const response = await fetch(
+      `/api/reports?type=monthly&year=${year}&month=${month}`
+    );
+    if (!response.ok) {
+      throw new Error("Failed to fetch monthly leave report");
+    }
+    return await response.json();
+  } catch (error) {
+    console.error("Failed to get monthly leave report:", error);
+    return [];
+  }
+};
+
 import {
   generateSummaryPDF,
   generateTimePeriodPDF,
@@ -655,7 +747,7 @@ export default function ReportsPage() {
   return (
     <div className="min-h-screen p-2 flex justify-center items-start bg-gray-50 pb-20">
       <div className="bg-white rounded-lg p-3 shadow-sm max-w-full w-full">
-        <Navigation />
+        <Navigation showAllTabs={true} />
 
         {/* Header */}
         <div className="mb-4">

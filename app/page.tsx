@@ -12,10 +12,80 @@ import {
 import Navigation from "@/components/Navigation";
 import Loading from "@/components/Loading";
 import UserRegistrationForm from "@/components/UserRegistrationForm";
-import { getUserByLineId, createUser, updateUser, isUserRegistered } from "@/lib/user";
 import { UserFormData } from "@/types/user";
 import type { User } from "@/types/user";
 import Image from "next/image";
+
+// API helper functions
+const getUserByLineId = async (lineUserId: string): Promise<User | null> => {
+  try {
+    const response = await fetch(
+      `/api/users?lineUserId=${encodeURIComponent(lineUserId)}`
+    );
+    if (response.status === 404) {
+      return null;
+    }
+    if (!response.ok) {
+      throw new Error("Failed to fetch user");
+    }
+    return await response.json();
+  } catch (error) {
+    console.error("Failed to get user:", error);
+    return null;
+  }
+};
+
+const createUser = async (
+  lineUserId: string,
+  formData: UserFormData,
+  lineProfile?: { displayName?: string; pictureUrl?: string }
+): Promise<User | null> => {
+  try {
+    const response = await fetch("/api/users", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        lineUserId,
+        formData,
+        lineProfile,
+      }),
+    });
+    if (!response.ok) {
+      throw new Error("Failed to create user");
+    }
+    return await response.json();
+  } catch (error) {
+    console.error("Failed to create user:", error);
+    return null;
+  }
+};
+
+const updateUser = async (
+  lineUserId: string,
+  formData: Partial<UserFormData>
+): Promise<User | null> => {
+  try {
+    const response = await fetch("/api/users", {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        lineUserId,
+        formData,
+      }),
+    });
+    if (!response.ok) {
+      throw new Error("Failed to update user");
+    }
+    return await response.json();
+  } catch (error) {
+    console.error("Failed to update user:", error);
+    return null;
+  }
+};
 
 interface Profile {
   userId: string;
@@ -130,10 +200,13 @@ export default function Home() {
     );
   }
 
+  // แสดง tabs ทั้งหมดเมื่อ login แล้วและลงทะเบียนแล้ว
+  const showAllTabs = isLoggedIn && !!user;
+
   return (
     <div className="min-h-screen p-2 flex justify-center items-start bg-gray-50">
       <div className="bg-white rounded-lg p-3 shadow-sm max-w-full w-full">
-        <Navigation />
+        <Navigation showAllTabs={showAllTabs} />
 
         {/* Status Info - Miller's Rule: จัดกลุ่มข้อมูล */}
         <div className="bg-gray-50 rounded-lg p-3 mb-3">
@@ -158,13 +231,8 @@ export default function Home() {
         {!isLoggedIn ? (
           /* Fitts's Law: ปุ่มใหญ่ กดง่าย */
           <button
-            className="w-full bg-green-700 hover:bg-green-800 font-semibold py-2.5 px-4 rounded-lg text-sm transition-colors shadow-lg ring-2 ring-green-800 active:scale-95"
+            className="w-full bg-green-600 hover:bg-green-700 text-white py-2.5 px-4 rounded-lg font-medium text-sm transition-colors shadow-md active:scale-95"
             onClick={handleLogin}
-            style={{
-              color: "#ffffff",
-              textShadow: "0 1px 3px rgba(0,0,0,0.5), 0 0 1px rgba(0,0,0,0.8)",
-              WebkitTextStroke: "0.3px rgba(0,0,0,0.2)",
-            }}
           >
             เข้าสู่ระบบด้วย LINE
           </button>

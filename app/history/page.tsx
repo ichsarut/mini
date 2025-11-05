@@ -4,10 +4,23 @@ import { useState, useEffect } from "react";
 import { useLiff } from "@/hooks/useLiff";
 import Navigation from "@/components/Navigation";
 import Loading from "@/components/Loading";
-import { getAllHistory } from "@/lib/history";
 import { getLeaveCategoryLabel } from "@/lib/booking";
 import { formatDateThai, formatDateShort } from "@/lib/dateUtils";
 import type { HistoryEntry } from "@/types/booking";
+
+// API helper function
+const getAllHistory = async () => {
+  try {
+    const response = await fetch("/api/history");
+    if (!response.ok) {
+      throw new Error("Failed to fetch history");
+    }
+    return await response.json();
+  } catch (error) {
+    console.error("Failed to get all history:", error);
+    return [];
+  }
+};
 
 export default function HistoryPage() {
   const { liff, loading, isLoggedIn } = useLiff();
@@ -203,7 +216,7 @@ export default function HistoryPage() {
   return (
     <div className="min-h-screen p-2 flex justify-center items-start bg-gray-50 pb-20">
       <div className="bg-white rounded-lg p-3 shadow-sm max-w-full w-full">
-        <Navigation />
+        <Navigation showAllTabs={true} />
 
         {/* Header */}
         <div className="mb-4">

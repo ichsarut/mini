@@ -1,9 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { getBookingsByMonth } from "@/lib/booking";
 import {
-  getBangkokDate,
   getTodayBangkok,
   getMaxBookingDate,
   isDateInBookingRange,
@@ -11,6 +9,23 @@ import {
   toBangkokDate,
 } from "@/lib/dateUtils";
 import type { Booking } from "@/types/booking";
+
+// API helper function
+const getBookingsByMonth = async (
+  year: number,
+  month: number
+): Promise<Booking[]> => {
+  try {
+    const response = await fetch(`/api/bookings?year=${year}&month=${month}`);
+    if (!response.ok) {
+      throw new Error("Failed to fetch bookings");
+    }
+    return await response.json();
+  } catch (error) {
+    console.error("Failed to get bookings by month:", error);
+    return [];
+  }
+};
 
 interface CalendarProps {
   currentDate?: Date;
