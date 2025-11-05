@@ -8,6 +8,7 @@ import {
   getDayStatsReport,
   getCategoryReport,
   getSummaryReport,
+  getMonthlyLeaveReport,
   type TimePeriodReport,
   type UserReport,
   type DayStatsReport,
@@ -20,21 +21,29 @@ import {
   generateCategoryPDF,
   generateUserPDF,
   generateDayStatsPDF,
+  generateMonthlyLeavePDF,
 } from "@/lib/pdfExport";
 import Loading from "@/components/Loading";
 
-type ReportType = "summary" | "time" | "category" | "user" | "day";
+type ReportType = "summary" | "time" | "category" | "user" | "day" | "monthly";
 
 export default function ReportsDownloadPage() {
   const searchParams = useSearchParams();
-  const [status, setStatus] = useState<"loading" | "success" | "error">("loading");
+  const [status, setStatus] = useState<"loading" | "success" | "error">(
+    "loading"
+  );
   const [errorMessage, setErrorMessage] = useState<string>("");
 
   useEffect(() => {
     const downloadPDF = async () => {
       try {
         const reportType = searchParams.get("type") as ReportType;
-        const periodType = searchParams.get("period") as "month" | "year" | null;
+        const periodType = searchParams.get("period") as
+          | "month"
+          | "year"
+          | null;
+        const yearParam = searchParams.get("year");
+        const monthParam = searchParams.get("month");
 
         if (!reportType) {
           setStatus("error");
@@ -89,6 +98,27 @@ export default function ReportsDownloadPage() {
             }
             await generateDayStatsPDF(dayData);
             break;
+          case "monthly":
+            if (!yearParam || !monthParam) {
+              setStatus("error");
+              setErrorMessage("กรุณาระบุปีและเดือนสำหรับรายงานการลา");
+              return;
+            }
+            const year = parseInt(yearParam);
+            const month = parseInt(monthParam);
+            if (isNaN(year) || isNaN(month) || month < 0 || month > 11) {
+              setStatus("error");
+              setErrorMessage("ปีหรือเดือนไม่ถูกต้อง");
+              return;
+            }
+            const monthlyData = await getMonthlyLeaveReport(year, month);
+            if (!monthlyData || monthlyData.length === 0) {
+              setStatus("error");
+              setErrorMessage("ยังไม่มีข้อมูลรายงานการลาแบบรายเดือน");
+              return;
+            }
+            await generateMonthlyLeavePDF(monthlyData, year, month);
+            break;
           default:
             setStatus("error");
             setErrorMessage("ประเภทรายงานไม่ถูกต้อง");
@@ -96,7 +126,7 @@ export default function ReportsDownloadPage() {
         }
 
         setStatus("success");
-        
+
         // ปิดหน้าหลังจากดาวน์โหลดเสร็จ (ถ้าเปิดในหน้าต่างใหม่)
         setTimeout(() => {
           window.close();

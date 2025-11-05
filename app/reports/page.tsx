@@ -10,11 +10,13 @@ import {
   getDayStatsReport,
   getCategoryReport,
   getSummaryReport,
+  getMonthlyLeaveReport,
   type TimePeriodReport,
   type UserReport,
   type DayStatsReport,
   type CategoryReport,
   type SummaryReport,
+  type MonthlyLeaveReport,
 } from "@/lib/reports";
 import { getLeaveCategoryLabel } from "@/lib/booking";
 import {
@@ -23,9 +25,10 @@ import {
   generateCategoryPDF,
   generateUserPDF,
   generateDayStatsPDF,
+  generateMonthlyLeavePDF,
 } from "@/lib/pdfExport";
 
-type ReportType = "summary" | "time" | "category" | "user" | "day";
+type ReportType = "summary" | "time" | "category" | "user" | "day" | "monthly";
 
 export default function ReportsPage() {
   const { liff, loading, isLoggedIn, isInClient } = useLiff();
@@ -36,6 +39,15 @@ export default function ReportsPage() {
   const [categoryReports, setCategoryReports] = useState<CategoryReport[]>([]);
   const [userReports, setUserReports] = useState<UserReport[]>([]);
   const [dayStats, setDayStats] = useState<DayStatsReport[]>([]);
+  const [monthlyLeaveReport, setMonthlyLeaveReport] = useState<
+    MonthlyLeaveReport[]
+  >([]);
+  const [selectedYear, setSelectedYear] = useState<number>(
+    new Date().getFullYear()
+  );
+  const [selectedMonth, setSelectedMonth] = useState<number>(
+    new Date().getMonth()
+  );
   const [loadingReports, setLoadingReports] = useState(false);
 
   useEffect(() => {
@@ -66,6 +78,13 @@ export default function ReportsPage() {
             const dayData = await getDayStatsReport(20);
             setDayStats(dayData);
             break;
+          case "monthly":
+            const monthlyData = await getMonthlyLeaveReport(
+              selectedYear,
+              selectedMonth
+            );
+            setMonthlyLeaveReport(monthlyData);
+            break;
         }
       } catch (error) {
         console.error("Failed to load reports:", error);
@@ -75,7 +94,7 @@ export default function ReportsPage() {
     };
 
     loadReports();
-  }, [activeReport, periodType, isLoggedIn]);
+  }, [activeReport, periodType, selectedYear, selectedMonth, isLoggedIn]);
 
   // ฟังก์ชันแสดงรายงานสรุปภาพรวม
   const renderSummaryReport = () => {
@@ -450,6 +469,134 @@ export default function ReportsPage() {
     );
   };
 
+  // ฟังก์ชันแสดงรายงานการลาแบบรายเดือน
+  const renderMonthlyLeaveReport = () => {
+    const monthNames = [
+      "มกราคม",
+      "กุมภาพันธ์",
+      "มีนาคม",
+      "เมษายน",
+      "พฤษภาคม",
+      "มิถุนายน",
+      "กรกฎาคม",
+      "สิงหาคม",
+      "กันยายน",
+      "ตุลาคม",
+      "พฤศจิกายน",
+      "ธันวาคม",
+    ];
+
+    // สร้างปีที่เลือกได้ (3 ปีย้อนหลังและ 1 ปีข้างหน้า)
+    const currentYear = new Date().getFullYear();
+    const years = [];
+    for (let i = currentYear - 3; i <= currentYear + 1; i++) {
+      years.push(i);
+    }
+
+    // กรองเฉพาะวันที่มีการลา
+    const daysWithLeaves = monthlyLeaveReport.filter(
+      (day) => day.bookings.length > 0
+    );
+
+    return (
+      <div className="space-y-3">
+        {/* Month/Year Selector */}
+        <div className="flex gap-2 mb-3">
+          <select
+            value={selectedMonth}
+            onChange={(e) => setSelectedMonth(parseInt(e.target.value))}
+            className="px-3 py-1.5 rounded-lg text-xs font-medium bg-white border border-gray-300 text-gray-700 focus:outline-none focus:ring-2 focus:ring-green-500"
+          >
+            {monthNames.map((month, index) => (
+              <option key={index} value={index}>
+                {month}
+              </option>
+            ))}
+          </select>
+          <select
+            value={selectedYear}
+            onChange={(e) => setSelectedYear(parseInt(e.target.value))}
+            className="px-3 py-1.5 rounded-lg text-xs font-medium bg-white border border-gray-300 text-gray-700 focus:outline-none focus:ring-2 focus:ring-green-500"
+          >
+            {years.map((year) => (
+              <option key={year} value={year}>
+                {year + 543}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        {daysWithLeaves.length === 0 ? (
+          <div className="p-6 bg-gray-50 rounded-lg text-center">
+            <p className="text-sm text-gray-600">
+              ไม่มีการลาในเดือน{monthNames[selectedMonth]} {selectedYear + 543}
+            </p>
+          </div>
+        ) : (
+          <div className="space-y-2">
+            <p className="text-xs text-gray-600 mb-2">
+              แสดงเฉพาะวันที่มีการลา ({daysWithLeaves.length} วัน)
+            </p>
+            {daysWithLeaves.map((day) => (
+              <div
+                key={day.date}
+                className="bg-gray-50 rounded-lg p-3 border-l-4 border-blue-500"
+              >
+                <div className="flex items-center justify-between mb-2">
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs bg-blue-100 text-blue-800 px-2 py-0.5 rounded font-semibold">
+                      {day.dayOfWeek}
+                    </span>
+                    <h3 className="text-sm font-semibold text-gray-800">
+                      {day.dateDisplay}
+                    </h3>
+                  </div>
+                  <span className="text-xs font-semibold text-blue-700">
+                    {day.bookings.length} คน
+                  </span>
+                </div>
+                <div className="space-y-1">
+                  {day.bookings.map((booking, index) => (
+                    <div
+                      key={index}
+                      className="text-xs text-gray-700 bg-white p-2 rounded"
+                    >
+                      <div className="flex items-center justify-between">
+                        <span className="font-medium">{booking.userName}</span>
+                        <span
+                          className={`px-2 py-0.5 rounded text-xs ${
+                            booking.category === "domestic"
+                              ? "bg-blue-100 text-blue-800"
+                              : "bg-purple-100 text-purple-800"
+                          }`}
+                        >
+                          {booking.categoryLabel}
+                        </span>
+                      </div>
+                      {booking.isMultiDay && (
+                        <div className="text-xs text-gray-500 mt-1">
+                          ระยะเวลา: {booking.startDate.split("-")[2]}/
+                          {parseInt(booking.startDate.split("-")[1])}/
+                          {parseInt(booking.startDate.split("-")[0]) + 543}
+                          {booking.endDate &&
+                            ` - ${booking.endDate.split("-")[2]}/${parseInt(
+                              booking.endDate.split("-")[1]
+                            )}/${
+                              parseInt(booking.endDate.split("-")[0]) + 543
+                            }`}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    );
+  };
+
   if (loading) {
     return <Loading />;
   }
@@ -488,63 +635,78 @@ export default function ReportsPage() {
             {/* ปุ่มดาวน์โหลด PDF */}
             <div className="flex flex-col gap-2">
               {/* ปุ่มเดิมสำหรับ browser ธรรมดา */}
-              <button
-                onClick={async () => {
-                  try {
-                    switch (activeReport) {
-                      case "summary":
-                        if (summary) await generateSummaryPDF(summary);
-                        break;
-                      case "time":
-                        if (timeReports.length > 0)
-                          await generateTimePeriodPDF(timeReports, periodType);
-                        break;
-                      case "category":
-                        if (categoryReports.length > 0)
-                          await generateCategoryPDF(categoryReports);
-                        break;
-                      case "user":
-                        if (userReports.length > 0)
-                          await generateUserPDF(userReports);
-                        break;
-                      case "day":
-                        if (dayStats.length > 0)
-                          await generateDayStatsPDF(dayStats);
-                        break;
+              {!isInClient && (
+                <button
+                  onClick={async () => {
+                    try {
+                      switch (activeReport) {
+                        case "summary":
+                          if (summary) await generateSummaryPDF(summary);
+                          break;
+                        case "time":
+                          if (timeReports.length > 0)
+                            await generateTimePeriodPDF(
+                              timeReports,
+                              periodType
+                            );
+                          break;
+                        case "category":
+                          if (categoryReports.length > 0)
+                            await generateCategoryPDF(categoryReports);
+                          break;
+                        case "user":
+                          if (userReports.length > 0)
+                            await generateUserPDF(userReports);
+                          break;
+                        case "day":
+                          if (dayStats.length > 0)
+                            await generateDayStatsPDF(dayStats);
+                          break;
+                        case "monthly":
+                          if (monthlyLeaveReport.length > 0)
+                            await generateMonthlyLeavePDF(
+                              monthlyLeaveReport,
+                              selectedYear,
+                              selectedMonth
+                            );
+                          break;
+                      }
+                    } catch (error) {
+                      console.error("Failed to generate PDF:", error);
+                      alert("เกิดข้อผิดพลาดในการสร้าง PDF");
                     }
-                  } catch (error) {
-                    console.error("Failed to generate PDF:", error);
-                    alert("เกิดข้อผิดพลาดในการสร้าง PDF");
+                  }}
+                  disabled={
+                    loadingReports ||
+                    (activeReport === "summary" && !summary) ||
+                    (activeReport === "time" && timeReports.length === 0) ||
+                    (activeReport === "category" &&
+                      categoryReports.length === 0) ||
+                    (activeReport === "user" && userReports.length === 0) ||
+                    (activeReport === "day" && dayStats.length === 0) ||
+                    (activeReport === "monthly" &&
+                      monthlyLeaveReport.length === 0)
                   }
-                }}
-                disabled={
-                  loadingReports ||
-                  (activeReport === "summary" && !summary) ||
-                  (activeReport === "time" && timeReports.length === 0) ||
-                  (activeReport === "category" &&
-                    categoryReports.length === 0) ||
-                  (activeReport === "user" && userReports.length === 0) ||
-                  (activeReport === "day" && dayStats.length === 0)
-                }
-                className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg text-xs font-medium transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed shadow-md flex items-center gap-2"
-              >
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  width="16"
-                  height="16"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
+                  className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg text-xs font-medium transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed shadow-md flex items-center gap-2"
                 >
-                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-                  <polyline points="7 10 12 15 17 10" />
-                  <line x1="12" y1="15" x2="12" y2="3" />
-                </svg>
-                ดาวน์โหลด PDF
-              </button>
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    width="16"
+                    height="16"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  >
+                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                    <polyline points="7 10 12 15 17 10" />
+                    <line x1="12" y1="15" x2="12" y2="3" />
+                  </svg>
+                  ดาวน์โหลด PDF
+                </button>
+              )}
 
               {/* ปุ่มสำหรับ LINE LIFF - เปิดใน browser ใหม่ */}
               {isInClient && (
@@ -558,6 +720,10 @@ export default function ReportsPage() {
                       // เพิ่ม period parameter สำหรับ time report
                       if (activeReport === "time") {
                         downloadUrl += `&period=${periodType}`;
+                      }
+                      // เพิ่ม year และ month parameter สำหรับ monthly report
+                      if (activeReport === "monthly") {
+                        downloadUrl += `&year=${selectedYear}&month=${selectedMonth}`;
                       }
 
                       // เปิดลิงก์ใน browser ใหม่ผ่าน LIFF
@@ -582,7 +748,9 @@ export default function ReportsPage() {
                     (activeReport === "category" &&
                       categoryReports.length === 0) ||
                     (activeReport === "user" && userReports.length === 0) ||
-                    (activeReport === "day" && dayStats.length === 0)
+                    (activeReport === "day" && dayStats.length === 0) ||
+                    (activeReport === "monthly" &&
+                      monthlyLeaveReport.length === 0)
                   }
                   className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-medium transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed shadow-md flex items-center gap-2"
                 >
@@ -660,6 +828,16 @@ export default function ReportsPage() {
           >
             สถิติวัน
           </button>
+          <button
+            onClick={() => setActiveReport("monthly")}
+            className={`px-3 py-2 rounded-lg text-xs font-medium transition-all active:scale-95 ${
+              activeReport === "monthly"
+                ? "bg-green-600 text-white shadow-md"
+                : "bg-gray-200 text-gray-700 hover:bg-gray-300"
+            }`}
+          >
+            รายงานการลา (รายเดือน)
+          </button>
         </div>
 
         {/* Report Content */}
@@ -674,6 +852,7 @@ export default function ReportsPage() {
             {activeReport === "category" && renderCategoryReport()}
             {activeReport === "user" && renderUserReport()}
             {activeReport === "day" && renderDayStatsReport()}
+            {activeReport === "monthly" && renderMonthlyLeaveReport()}
           </div>
         )}
       </div>
