@@ -414,16 +414,10 @@ export const generateMonthlyLeavePDF = async (
     30
   );
 
-  let yPos = 45;
-  let pageNumber = 1;
-
-  // กรองเฉพาะวันที่มีการลา
-  const daysWithLeaves = reports.filter((day) => day.bookings.length > 0);
-
-  if (daysWithLeaves.length === 0) {
+  if (reports.length === 0) {
     doc.setFont("Sarabun", "normal");
     doc.setFontSize(12);
-    doc.text("ไม่มีข้อมูลการลาในเดือนนี้", 14, yPos);
+    doc.text("ไม่มีข้อมูลการลาในเดือนนี้", 14, 45);
     doc.save(
       `รายงานการลา_${monthNames[month]}_${year + 543}_${
         new Date().toISOString().split("T")[0]
@@ -432,88 +426,74 @@ export const generateMonthlyLeavePDF = async (
     return;
   }
 
-  // แบ่งข้อมูลเป็นหลายหน้า (ถ้ามีมาก)
-  const itemsPerPage = 25;
-  let currentPage = 0;
-  let startIndex = 0;
+  // สร้างข้อมูลตาราง
+  const tableData = reports.map((report) => [
+    report.userName,
+    report.categoryLabel,
+    report.startDateDisplay,
+    report.endDateDisplay || "-",
+    report.daysCount.toString(),
+    report.reason || "-",
+    report.createdAtDisplay,
+  ]);
 
-  while (startIndex < daysWithLeaves.length) {
-    if (pageNumber > 1) {
-      doc.addPage();
-      yPos = 20;
-    }
+  autoTable(doc, {
+    startY: 45,
+    head: [
+      [
+        "ชื่อ",
+        "ประเภทการลา",
+        "วันที่เริ่ม",
+        "วันที่สิ้นสุด",
+        "จำนวนวัน",
+        "เหตุผล",
+        "วันที่สร้าง",
+      ],
+    ],
+    body: tableData,
+    theme: "striped",
+    headStyles: {
+      fillColor: [37, 99, 235], // Blue color
+      font: "Sarabun",
+      fontStyle: "bold",
+      textColor: [255, 255, 255],
+    },
+    styles: { font: "Sarabun", fontSize: 9 },
+    columnStyles: {
+      0: { cellWidth: 40 }, // ชื่อ
+      1: { cellWidth: 35 }, // ประเภทการลา
+      2: { cellWidth: 25 }, // วันที่เริ่ม
+      3: { cellWidth: 25 }, // วันที่สิ้นสุด
+      4: { cellWidth: 20, halign: "center" }, // จำนวนวัน
+      5: { cellWidth: 30 }, // เหตุผล
+      6: { cellWidth: 25 }, // วันที่สร้าง
+    },
+    margin: { top: 45 },
+    didParseCell: function (data: any) {
+      // Wrap text สำหรับ cell ที่มีเนื้อหายาว
+      if (data.cell.text && data.cell.text.length > 20) {
+        data.cell.styles.cellPadding = {
+          top: 2,
+          right: 2,
+          bottom: 2,
+          left: 2,
+        };
+      }
+    },
+  });
 
-    const endIndex = Math.min(startIndex + itemsPerPage, daysWithLeaves.length);
-    const pageData = daysWithLeaves.slice(startIndex, endIndex);
-
-    // สร้างตารางสำหรับหน้านี้
-    const tableData = pageData.map((day) => {
-      const bookingInfo = day.bookings
-        .map((b) => {
-          if (b.isMultiDay) {
-            return `${b.userName} (${b.categoryLabel}) [${formatDateShort(
-              new Date(b.startDate)
-            )} - ${b.endDate ? formatDateShort(new Date(b.endDate)) : ""}]`;
-          }
-          return `${b.userName} (${b.categoryLabel})`;
-        })
-        .join(", ");
-
-      return [
-        `${day.dayOfWeek} ${day.dateDisplay}`,
-        day.bookings.length > 0 ? `${day.bookings.length} คน` : "-",
-        bookingInfo || "-",
-      ];
-    });
-
-    autoTable(doc, {
-      startY: yPos,
-      head: [["วันที่", "จำนวนคน", "รายชื่อผู้ลา"]],
-      body: tableData,
-      theme: "striped",
-      headStyles: {
-        fillColor: [34, 197, 94],
-        font: "Sarabun",
-        fontStyle: "bold",
-      },
-      styles: { font: "Sarabun", fontSize: 8 },
-      columnStyles: {
-        0: { cellWidth: 50 },
-        1: { cellWidth: 30 },
-        2: { cellWidth: 110 },
-      },
-      didParseCell: function (data: any) {
-        // ถ้า cell มีข้อมูลมากเกินไป ให้ wrap text
-        if (
-          data.column.index === 2 &&
-          data.cell.text &&
-          data.cell.text.length > 50
-        ) {
-          data.cell.text = data.cell.text;
-          data.cell.styles.cellPadding = {
-            top: 2,
-            right: 2,
-            bottom: 2,
-            left: 2,
-          };
-        }
-      },
-    });
-
-    yPos = (doc as any).lastAutoTable.finalY + 10;
-
-    // เพิ่มหมายเลขหน้า
+  // เพิ่มหมายเลขหน้า
+  const pageCount = (doc as any).internal.getNumberOfPages();
+  for (let i = 1; i <= pageCount; i++) {
+    doc.setPage(i);
     doc.setFont("Sarabun", "normal");
     doc.setFontSize(10);
     doc.text(
-      `หน้า ${pageNumber}`,
+      `หน้า ${i}/${pageCount}`,
       doc.internal.pageSize.getWidth() / 2,
       doc.internal.pageSize.getHeight() - 10,
       { align: "center" }
     );
-
-    startIndex = endIndex;
-    pageNumber++;
   }
 
   doc.save(

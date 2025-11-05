@@ -493,11 +493,6 @@ export default function ReportsPage() {
       years.push(i);
     }
 
-    // กรองเฉพาะวันที่มีการลา
-    const daysWithLeaves = monthlyLeaveReport.filter(
-      (day) => day.bookings.length > 0
-    );
-
     return (
       <div className="space-y-3">
         {/* Month/Year Selector */}
@@ -526,71 +521,71 @@ export default function ReportsPage() {
           </select>
         </div>
 
-        {daysWithLeaves.length === 0 ? (
+        {monthlyLeaveReport.length === 0 ? (
           <div className="p-6 bg-gray-50 rounded-lg text-center">
             <p className="text-sm text-gray-600">
               ไม่มีการลาในเดือน{monthNames[selectedMonth]} {selectedYear + 543}
             </p>
           </div>
         ) : (
-          <div className="space-y-2">
-            <p className="text-xs text-gray-600 mb-2">
-              แสดงเฉพาะวันที่มีการลา ({daysWithLeaves.length} วัน)
-            </p>
-            {daysWithLeaves.map((day) => (
-              <div
-                key={day.date}
-                className="bg-gray-50 rounded-lg p-3 border-l-4 border-blue-500"
-              >
-                <div className="flex items-center justify-between mb-2">
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs bg-blue-100 text-blue-800 px-2 py-0.5 rounded font-semibold">
-                      {day.dayOfWeek}
-                    </span>
-                    <h3 className="text-sm font-semibold text-gray-800">
-                      {day.dateDisplay}
-                    </h3>
-                  </div>
-                  <span className="text-xs font-semibold text-blue-700">
-                    {day.bookings.length} คน
-                  </span>
-                </div>
-                <div className="space-y-1">
-                  {day.bookings.map((booking, index) => (
-                    <div
-                      key={index}
-                      className="text-xs text-gray-700 bg-white p-2 rounded"
-                    >
-                      <div className="flex items-center justify-between">
-                        <span className="font-medium">{booking.userName}</span>
-                        <span
-                          className={`px-2 py-0.5 rounded text-xs ${
-                            booking.category === "domestic"
-                              ? "bg-blue-100 text-blue-800"
-                              : "bg-purple-100 text-purple-800"
-                          }`}
-                        >
-                          {booking.categoryLabel}
-                        </span>
-                      </div>
-                      {booking.isMultiDay && (
-                        <div className="text-xs text-gray-500 mt-1">
-                          ระยะเวลา: {booking.startDate.split("-")[2]}/
-                          {parseInt(booking.startDate.split("-")[1])}/
-                          {parseInt(booking.startDate.split("-")[0]) + 543}
-                          {booking.endDate &&
-                            ` - ${booking.endDate.split("-")[2]}/${parseInt(
-                              booking.endDate.split("-")[1]
-                            )}/${
-                              parseInt(booking.endDate.split("-")[0]) + 543
-                            }`}
-                        </div>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              </div>
-            ))}
+          <div className="overflow-x-auto">
+            <table className="w-full text-xs border-collapse">
+              <thead>
+                <tr className="bg-blue-600 text-white">
+                  <th className="border border-gray-300 px-3 py-2 text-left font-semibold">
+                    ชื่อ
+                  </th>
+                  <th className="border border-gray-300 px-3 py-2 text-left font-semibold">
+                    ประเภทการลา
+                  </th>
+                  <th className="border border-gray-300 px-3 py-2 text-left font-semibold">
+                    วันที่เริ่ม
+                  </th>
+                  <th className="border border-gray-300 px-3 py-2 text-left font-semibold">
+                    วันที่สิ้นสุด
+                  </th>
+                  <th className="border border-gray-300 px-3 py-2 text-center font-semibold">
+                    จำนวนวัน
+                  </th>
+                  <th className="border border-gray-300 px-3 py-2 text-left font-semibold">
+                    เหตุผล
+                  </th>
+                  <th className="border border-gray-300 px-3 py-2 text-left font-semibold">
+                    วันที่สร้าง
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {monthlyLeaveReport.map((report, index) => (
+                  <tr
+                    key={report.id}
+                    className={index % 2 === 0 ? "bg-white" : "bg-gray-50"}
+                  >
+                    <td className="border border-gray-300 px-3 py-2">
+                      {report.userName}
+                    </td>
+                    <td className="border border-gray-300 px-3 py-2">
+                      {report.categoryLabel}
+                    </td>
+                    <td className="border border-gray-300 px-3 py-2">
+                      {report.startDateDisplay}
+                    </td>
+                    <td className="border border-gray-300 px-3 py-2">
+                      {report.endDateDisplay || "-"}
+                    </td>
+                    <td className="border border-gray-300 px-3 py-2 text-center">
+                      {report.daysCount}
+                    </td>
+                    <td className="border border-gray-300 px-3 py-2">
+                      {report.reason || "-"}
+                    </td>
+                    <td className="border border-gray-300 px-3 py-2">
+                      {report.createdAtDisplay}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
         )}
       </div>

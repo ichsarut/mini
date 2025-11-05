@@ -35,17 +35,18 @@ export interface DayStatsReport {
 
 // Interface สำหรับรายงานการลาแบบรายเดือน
 export interface MonthlyLeaveReport {
-  date: string; // YYYY-MM-DD
-  dateDisplay: string; // วัน เดือน ปี (ไทย)
-  dayOfWeek: string; // วันในสัปดาห์
-  bookings: {
-    userName: string;
-    category: LeaveCategory;
-    categoryLabel: string;
-    startDate: string;
-    endDate?: string;
-    isMultiDay: boolean;
-  }[];
+  id: string;
+  userName: string;
+  category: LeaveCategory;
+  categoryLabel: string;
+  startDate: string;
+  startDateDisplay: string; // DD/MM/YYYY (Thai calendar)
+  endDate?: string;
+  endDateDisplay?: string; // DD/MM/YYYY (Thai calendar)
+  daysCount: number;
+  reason?: string;
+  createdAt: string;
+  createdAtDisplay: string; // DD/MM/YYYY (Thai calendar)
 }
 
 // Interface สำหรับรายงานสรุปตามประเภท
@@ -341,7 +342,7 @@ export const getSummaryReport = async (): Promise<SummaryReport> => {
   };
 };
 
-// รายงานการลาแบบรายเดือน (แสดงว่าแต่ละวันมีใครลา)
+// รายงานการลาแบบรายเดือน (แสดงรายละเอียดการลาทั้งหมดในเดือนนั้น)
 export const getMonthlyLeaveReport = async (
   year: number,
   month: number // 0-11 (January = 0)
@@ -351,73 +352,54 @@ export const getMonthlyLeaveReport = async (
   // คำนวณวันแรกและวันสุดท้ายของเดือน
   const firstDay = new Date(year, month, 1);
   const lastDay = new Date(year, month + 1, 0);
+  const firstDayStr = firstDay.toISOString().split("T")[0];
+  const lastDayStr = lastDay.toISOString().split("T")[0];
 
-  // สร้าง array ของทุกวันในเดือน
-  const daysInMonth: MonthlyLeaveReport[] = [];
-  const currentDate = new Date(firstDay);
+  // กรองการจองที่อยู่ในเดือนนี้ (โดยดูจากวันที่เริ่มต้น)
+  const monthlyBookings = bookings.filter((booking) => {
+    const bookingDate = new Date(booking.date);
+    return bookingDate >= firstDay && bookingDate <= lastDay;
+  });
 
-  const dayNames = ["อา", "จ", "อ", "พ", "พฤ", "ศ", "ส"];
-  const monthNames = [
-    "มกราคม",
-    "กุมภาพันธ์",
-    "มีนาคม",
-    "เมษายน",
-    "พฤษภาคม",
-    "มิถุนายน",
-    "กรกฎาคม",
-    "สิงหาคม",
-    "กันยายน",
-    "ตุลาคม",
-    "พฤศจิกายน",
-    "ธันวาคม",
-  ];
+  // แปลงเป็น MonthlyLeaveReport
+  const reports: MonthlyLeaveReport[] = monthlyBookings.map((booking) => {
+    const categoryLabel =
+      booking.category === "domestic"
+        ? "ลาพักผ่อนในประเทศ"
+        : "ลาพักผ่อนนอกประเทศ";
 
-  while (currentDate <= lastDay) {
-    const dateStr = currentDate.toISOString().split("T")[0];
-    const dayOfWeek = dayNames[currentDate.getDay()];
-    const day = currentDate.getDate();
-    const monthName = monthNames[currentDate.getMonth()];
-    const yearThai = currentDate.getFullYear() + 543;
+    // คำนวณจำนวนวัน
+    const startDate = new Date(booking.date);
+    const endDate = booking.endDate ? new Date(booking.endDate) : startDate;
+    const daysCount = getDaysCount(startDate, endDate);
 
-    // หาการจองที่ตรงกับวันนี้
-    const dayBookings = bookings.filter((booking) => {
-      const bookingStart = new Date(booking.date);
-      const bookingEnd = booking.endDate
-        ? new Date(booking.endDate)
-        : bookingStart;
-      const checkDate = new Date(dateStr);
+    // Format วันที่สำหรับแสดง
+    const formatDateDisplay = (dateStr: string): string => {
+      const date = new Date(dateStr);
+      const day = date.getDate();
+      const month = date.getMonth() + 1;
+      const yearThai = date.getFullYear() + 543;
+      return `${day}/${month}/${yearThai}`;
+    };
 
-      // ตรวจสอบว่าวันนี้อยู่ในช่วงการจองหรือไม่
-      return checkDate >= bookingStart && checkDate <= bookingEnd;
-    });
+    return {
+      id: booking.id,
+      userName: booking.userName,
+      category: booking.category,
+      categoryLabel,
+      startDate: booking.date,
+      startDateDisplay: formatDateDisplay(booking.date),
+      endDate: booking.endDate,
+      endDateDisplay: booking.endDate
+        ? formatDateDisplay(booking.endDate)
+        : undefined,
+      daysCount,
+      reason: booking.reason,
+      createdAt: booking.createdAt,
+      createdAtDisplay: formatDateDisplay(booking.createdAt),
+    };
+  });
 
-    // แปลงข้อมูลการจอง
-    const bookingData = dayBookings.map((booking) => {
-      const isMultiDay = !!(
-        booking.endDate && booking.endDate !== booking.date
-      );
-      const categoryLabel =
-        booking.category === "domestic" ? "ในประเทศ" : "นอกประเทศ";
-
-      return {
-        userName: booking.userName,
-        category: booking.category,
-        categoryLabel,
-        startDate: booking.date,
-        endDate: booking.endDate,
-        isMultiDay,
-      };
-    });
-
-    daysInMonth.push({
-      date: dateStr,
-      dateDisplay: `${day} ${monthName} ${yearThai}`,
-      dayOfWeek,
-      bookings: bookingData,
-    });
-
-    currentDate.setDate(currentDate.getDate() + 1);
-  }
-
-  return daysInMonth;
+  // เรียงตามวันที่เริ่มต้น
+  return reports.sort((a, b) => a.startDate.localeCompare(b.startDate));
 };
